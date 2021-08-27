@@ -47,7 +47,11 @@
 		tmpfs           /var/tmp           tmpfs     nodev,nosuid            0 0
 		tmpfs           /var/cache         tmpfs     nodev,nosuid            0 0
 		tmpfs           /tmp               tmpfs     nodev,nosuid,mode=1777  0 0
-		
+
+* disable swap
+
+		systemctl disable dphys-swapfile
+
 * shell highlighting /root/.bashrc
 
 		export LS_OPTIONS='--color=auto'

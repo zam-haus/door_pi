@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with door_manager.  If not, see <http://www.gnu.org/licenses/>.
 
+from time import sleep
+
 inputs = { # mapping to GPIO ids
     'gong': 22,
     'light': 23,
@@ -45,6 +47,7 @@ class DoorHal:
     
     def setOutput(self, name, val):
         assert (name in outputs) and (val in (True,False))
+        print('output', val, 'on', name)
         self.gpio.output(outputs[name], val)
         
     def getInput(self, name):
@@ -57,30 +60,79 @@ class DoorHal:
             self.gpio.FALLING if falling else self.gpio.RISING,
             callback=callback
         )
+        
+class DoorHalSim:
+    def __init__(self):
+        import readline
+        from threading import Thread        
+        self.worker = Thread(target=self.__inputLoop)
+        self.worker.start()
+        self.inputStates = {}
+        self.inputCallbacksFalling = {}
+        self.inputCallbacksRising = {}
+        for i in inputs:
+            self.inputStates[i] = 1
+            self.inputCallbacksFalling[i] = []
+            self.inputCallbacksRising[i] = []
+        
+    def __inputLoop(self):
+        try:
+            while True:
+                inp = input("> ")
+                if inp in inputs:
+                    self.inputStates[inp] = 0
+                    for cb in self.inputCallbacksFalling[inp]:
+                        cb(0)
+                    sleep(0.5)
+                    self.inputStates[inp] = 1
+                    for cb in self.inputCallbacksRising[inp]:
+                        cb(1)
+        except EOFError:
+            print()
+            return
+        
+    def setOutput(self, name, val):
+        assert (name in outputs) and (val in (True,False))
+        print("output", name, "=", val)
+
+    def getInput(self, name):
+        assert name in inputs
+        return self.inputStates[name]
+
+    def registerInputCallback(self, name, callback, falling=True):
+        assert name in inputs
+        if falling:
+            self.inputCallbacksFalling[name].append(callback)
+        else:
+            self.inputCallbacksRising[name].append(callback)
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
-    from time import sleep
     
     p = ArgumentParser(description='Test DoorHal')
     p.add_argument('name', help='name of gpio')
+    p.add_argument('-s', dest='sim', action='store_true', help='simulation mode')
     p.add_argument('-i', dest='input', action='store_true', help='get input')
     p.add_argument('-o', dest='output', type=int, metavar='value')
-    p.add_argument('-t', dest='time', type=int, metavar='millisecs', default=0)
+    p.add_argument('-t', dest='time', type=int, metavar='millisecs', default=500)
     args = p.parse_args()
 
-    hal = DoorHal()
+    if args.sim:
+        hal = DoorHalSim()
+    else:
+        hal = DoorHal()
     
     if args.input:
         print('input', args.name, 'is', hal.getInput(args.name))
+        hal.registerInputCallback(args.name, 
+            lambda v: print("input", args.name, "falling"), falling=True)
+        hal.registerInputCallback(args.name, 
+            lambda v: print("input", args.name, "rising"), falling=False)
     elif args.output is not None:
         val = args.output == 1
-        print('output', val, 'on', args.name)
         hal.setOutput(args.name, val)
         if args.time > 0:
             sleep(args.time/1000)
             hal.setOutput(args.name, False)
-            hal.setOutput(args.name, val)
-            print('output', False, 'on', args.name)
     
     

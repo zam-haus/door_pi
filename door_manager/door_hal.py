@@ -14,6 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with door_manager.  If not, see <http://www.gnu.org/licenses/>.
 
+from os import kill, getpid
+from signal import SIGTERM
 from time import sleep
 
 inputs = { # mapping to GPIO ids
@@ -89,6 +91,7 @@ class DoorHalSim:
                         cb(1)
         except EOFError:
             print()
+            kill(getpid(), SIGTERM)
             return
         
     def setOutput(self, name, val):

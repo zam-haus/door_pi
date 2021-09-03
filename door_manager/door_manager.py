@@ -85,10 +85,10 @@ if __name__ == '__main__':
 
     dm = DoorManager(
         hal,
-        dict(transport='tcp'),
-        dict(username=config['mqtt-user'], password=config['mqtt-pass']),
-        dict(host=config['mqtt-host'], port=config['mqtt-port'], keepalive=10),
-        False
+        config['mqtt']['client_kwargs'],
+        config['mqtt']['password_auth'],
+        config['mqtt']['server_kwargs'],
+        config['mqtt']['tls']
     )
     dm.connect()
     pause()

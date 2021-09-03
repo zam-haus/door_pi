@@ -83,4 +83,24 @@
 		PROMPT_COMMAND=set_bash_prompt
 
 
+### Setup Door Manager on Raspi
+
+* install python3-pip and pipenv
+
+		sudo apt install python3-pip
+		sudo pip3 install pipenv
+
+* copy door_manager dir to /home/pi
+
+* setup pipenv
+
+		cd /home/pi/door_manager
+		pipenv install --site-packages
+
+* setup systemd service
+
+		sudo cp /home/pi/door_manager/door-manager.service /etc/systemd/system/
+		sudo systemctl daemon-reload
+		sudo systemctl enable door-manager
+		sudo systemctl start door-manager
 

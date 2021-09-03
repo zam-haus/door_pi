@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -u
+#!/usr/bin/env -S python3 -u
 
 # This file is part of door_manager.
 #
@@ -66,3 +66,5 @@ if __name__ == '__main__':
     )
     dm.connect()
     pause()
+    dm._mqttc.loop_stop()
+

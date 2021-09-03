@@ -92,6 +92,10 @@
 
 * copy door_manager dir to /home/pi
 
+* copy door_manager/config.json.example to door_manager/config.json
+
+* adjust config.json settings according to your setup
+
 * setup pipenv
 
 		cd /home/pi/door_manager

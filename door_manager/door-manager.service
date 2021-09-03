@@ -1,0 +1,16 @@
+[Unit]
+Description=Door Manager
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+User=pi
+ExecStart=/usr/bin/env pipenv run python3 -u /home/pi/door_manager/door_manager.py
+WorkingDirectory=/home/pi/door_manager
+SyslogIdentifier=door-manager
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

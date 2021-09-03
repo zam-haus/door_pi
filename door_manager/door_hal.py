@@ -58,10 +58,13 @@ class DoorHal:
         
     def registerInputCallback(self, name, callback, falling=True):
         assert name in inputs
-        self.gpio.add_event_detect(
+        self.gpio.add_event_detect(inputs[name],
             self.gpio.FALLING if falling else self.gpio.RISING,
             callback=callback
         )
+
+    def cleanup(self):
+        self.gpio.cleanup()
         
 class DoorHalSim:
     def __init__(self):
@@ -108,6 +111,9 @@ class DoorHalSim:
             self.inputCallbacksFalling[name].append(callback)
         else:
             self.inputCallbacksRising[name].append(callback)
+
+    def cleanup(self):
+        pass
 
 if __name__ == '__main__':
     from argparse import ArgumentParser

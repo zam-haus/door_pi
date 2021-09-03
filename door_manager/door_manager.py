@@ -67,4 +67,5 @@ if __name__ == '__main__':
     dm.connect()
     pause()
     dm._mqttc.loop_stop()
+    hal.cleanup()
 

@@ -1,1 +1,2 @@
 decorated-paho-mqtt
+docopt

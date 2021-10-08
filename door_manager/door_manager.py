@@ -37,7 +37,7 @@ mqtt_log.setLevel("DEBUG")
 import sys
 from json import loads
 from time import time, sleep
-from signal import pause
+from signal import signal, pause, SIGUSR1, SIGTERM
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
 from door_hal import DoorHal, DoorHalSim
@@ -45,11 +45,14 @@ from door_hal import DoorHal, DoorHalSim
 with open('config.json') as fd:
     config = loads(fd.read())
 
+def open_door():
+    hal.setOutput('key', 1)
+    sleep(0.5)
+    hal.setOutput('key', 0)
 
 class DoorManager(GenericMqttEndpoint):
-    def __init__(self, hal, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
+    def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
         super().__init__(client_kwargs, password_auth, server_kwargs, tls)
-        self.hal = hal
 
     @GenericMqttEndpoint.subscribe_decorator('door/%s/open' % config['door-id'], qos=2)
     def open(self, *, client, userdata, message):
@@ -61,9 +64,7 @@ class DoorManager(GenericMqttEndpoint):
             not_after = payload['not_after']
             now = time()
             if now < float(not_after):
-                self.hal.setOutput('key', 1)
-                sleep(0.5)
-                self.hal.setOutput('key', 0)
+                open_door()
             else:
                 time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
@@ -73,6 +74,13 @@ class DoorManager(GenericMqttEndpoint):
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
 
+def sigterm_handler(signum, frame):
+    dm._mqttc.loop_stop()
+    hal.cleanup()
+    sys.exit(0)
+
+def sigusr1_handler(signum, frame):
+    open_door()
 
 if __name__ == '__main__':
     args = docopt(__doc__)
@@ -82,16 +90,16 @@ if __name__ == '__main__':
         hal = DoorHalSim()
     else:
         hal = DoorHal()
+        
+    signal(SIGUSR1, sigusr1_handler)
+    signal(SIGTERM, sigterm_handler)
 
     dm = DoorManager(
-        hal,
         config['mqtt']['client_kwargs'],
         config['mqtt']['password_auth'],
         config['mqtt']['server_kwargs'],
         config['mqtt']['tls']
     )
     dm.connect()
-    pause()
-    dm._mqttc.loop_stop()
-    hal.cleanup()
-
+    while True:
+        pause()

@@ -78,8 +78,8 @@ class DoorManager(GenericMqttEndpoint):
 async def input_loop(doorman: DoorManager, hal: DoorHal):
     while asyncio.get_event_loop().is_running():
         try:
-            presence = not hal.getInput("sw1")
-            doorman.publish("door/+/presence", config["door-id"], qos=2, retain=True, payload=presence)
+            presence = hal.getInput("sw1")
+            doorman.publish("door/+/presence", config["door-id"], qos=2, retain=True, payload=str(presence).lower())
         except:
             log.error("Failed to retrieve or publish inputs", exc_info=True)
         await asyncio.sleep(5)

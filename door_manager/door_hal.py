@@ -133,10 +133,10 @@ if __name__ == '__main__':
     
     if args.input:
         print('input', args.name, 'is', hal.getInput(args.name))
-        hal.registerInputCallback(args.name, 
-            lambda v: print("input", args.name, "falling"), falling=True)
-        hal.registerInputCallback(args.name, 
-            lambda v: print("input", args.name, "rising"), falling=False)
+        #hal.registerInputCallback(args.name, 
+        #    lambda v: print("input", args.name, "falling"), falling=True)
+        #hal.registerInputCallback(args.name, 
+        #    lambda v: print("input", args.name, "rising"), falling=False)
     elif args.output is not None:
         val = args.output == 1
         hal.setOutput(args.name, val)

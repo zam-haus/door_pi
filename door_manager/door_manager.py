@@ -84,6 +84,12 @@ async def input_loop(doorman: DoorManager, hal: DoorHal):
             log.error("Failed to retrieve or publish inputs", exc_info=True)
         await asyncio.sleep(5)
 
+def gong_handler(v):
+    try:
+        dm.publish("door/+/gong", config["door-id"], qos=2, retain=False)
+    except:
+        log.error("Failed publishing gong", exc_info=True)
+
 def sigterm_handler(signum, frame):
     dm._mqttc.loop_stop()
     hal.cleanup()
@@ -111,6 +117,8 @@ if __name__ == '__main__':
         config['mqtt']['tls']
     )
     dm.connect()
+    
+    hal.registerInputCallback("gong", gong_handler, falling=False)
     
     loop = asyncio.get_event_loop()
     loop.create_task(input_loop(dm, hal))

@@ -35,6 +35,7 @@ mqtt_log = logging.getLogger(__name__ + ".mqtt")
 mqtt_log.setLevel("DEBUG")
 
 import sys
+import asyncio
 from json import loads
 from time import time, sleep
 from signal import signal, pause, SIGUSR1, SIGTERM
@@ -74,6 +75,15 @@ class DoorManager(GenericMqttEndpoint):
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
 
+async def input_loop(doorman: DoorManager, hal: DoorHal):
+    while asyncio.get_event_loop().is_running():
+        try:
+            presence = not hal.getInput("sw1")
+            doorman.publish("door/+/presence", config["door-id"], qos=2, retain=True, payload=presence)
+        except:
+            log.error("Failed to retrieve or publish inputs", exc_info=True)
+        await asyncio.sleep(5)
+
 def sigterm_handler(signum, frame):
     dm._mqttc.loop_stop()
     hal.cleanup()
@@ -101,5 +111,7 @@ if __name__ == '__main__':
         config['mqtt']['tls']
     )
     dm.connect()
-    while True:
-        pause()
+    
+    loop = asyncio.get_event_loop()
+    loop.create_task(input_loop(dm, hal))
+    loop.run_forever()

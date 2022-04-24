@@ -8,21 +8,24 @@
       path: /mnt
       src: /dev/loop0p1
       fstype: vfat
-      state: present
+      state: mounted
+      fstab: /tmp/tmp.fstab
   - name: create ssh file
-    ansible.builtin.file:
-      path: /mnt/ssh
-      state: touch
+    ansible.builtin.copy:
+      content: ''
+      dest: /mnt/ssh
   - name: unmount boot partition
     ansible.posix.mount:
       path: /mnt
       state: unmounted
+      fstab: /tmp/tmp.fstab
   - name: mount root partition
     ansible.posix.mount:
       path: /mnt
       src: /dev/loop0p2
       fstype: ext4
-      state: present
+      state: mounted
+      fstab: /tmp/tmp.fstab
   - name: create root ssh config dir
     ansible.builtin.file:
       path: /mnt/root/.ssh
@@ -42,19 +45,20 @@
       path: /mnt/home/pi/.ssh
       state: directory
       mode: 0700
-      owner: 1000
-      group: 1000
+      owner: '1000'
+      group: '1000'
   - name: create pi authorized keys file
     ansible.builtin.copy:
       src: "{{key}}"
       dest: /mnt/home/pi/.ssh/authorized_keys
       mode: 0600
-      owner: 1000
-      group: 1000
+      owner: '1000'
+      group: '1000'
   - name: unmount root partition
     ansible.posix.mount:
       path: /mnt
       state: unmounted
+      fstab: /tmp/tmp.fstab
   - name: unmount image
     shell: losetup -d /dev/loop0
 

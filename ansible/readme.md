@@ -10,6 +10,6 @@ Note: /dev/loop0 is used as hard-coded loopback device
 
 * configure read only root
 
-		ansible-playbook setup-rpi-readonly.yml -i HOSTNAME,
+		ansible-playbook setup-rpi-readonly.yml -i IP, -e hostname=HOSTNAME
 Note: the extra comma at the end is not a mistake
 

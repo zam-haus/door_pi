@@ -1,0 +1,46 @@
+- hosts: all
+  gather_facts: false
+  remote_user: root
+  tasks:
+    - name: ensure rw root
+      ansible.posix.mount:
+        path: /
+        opts: rw,defaults,noatime
+        state: remounted
+    - name: install pipenv
+      ansible.builtin.apt:
+        name: pipenv
+        state: present
+    - name: install files
+      ansible.builtin.copy:
+        src: '{{item}}'
+        dest: /home/pi/door_manager/
+        owner: pi
+        group: pi
+      loop:
+        - ../door_manager/door_hal.py
+        - ../door_manager/door_manager.py
+        - ../door_manager/Pipfile
+        - ../door_manager/Pipfile.lock
+        - ../door_manager/config.json
+    - name: install daemon
+      ansible.builtin.copy:
+        src: ../door_manager/door-manager.service
+        dest: /etc/systemd/system/
+    - name: systemd reload
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        name: door-manager
+        enabled: yes
+        state: stopped
+    - name: setup pipenv
+      command: pipenv --site-packages install
+      become: yes
+      become_user: pi
+      args:
+        chdir: /home/pi/door_manager
+    - name: ensure ro root
+      ansible.posix.mount:
+        path: /
+        opts: ro,defaults,noatime
+        state: remounted

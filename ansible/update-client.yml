@@ -1,0 +1,27 @@
+- hosts: all
+  gather_facts: false
+  remote_user: root
+  tasks:
+    - name: ensure rw root
+      ansible.posix.mount:
+        path: /
+        opts: rw,defaults,noatime
+        state: remounted
+    - name: install files
+      ansible.builtin.copy:
+        src: '{{item}}'
+        dest: /home/pi/door_manager/
+        owner: pi
+        group: pi
+      loop:
+        - ../door_manager/door_hal.py
+        - ../door_manager/door_manager.py
+        - ../door_manager/Pipfile
+        - ../door_manager/Pipfile.lock
+        - ../door_manager/config.json
+        - ../door_manager/config-gpio2.json
+    - name: ensure ro root
+      ansible.posix.mount:
+        path: /
+        opts: ro,defaults,noatime
+        state: remounted

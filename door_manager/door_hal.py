@@ -17,48 +17,40 @@
 from os import kill, getpid
 from signal import SIGTERM
 from time import sleep
+from json import load
 
-inputs = { # mapping to GPIO ids
-    'gong': 22,
-    'light': 23,
-    'sw1': 24,
-    'sw2': 25,
-    'sw3': 26,
-}
-
-outputs = { # mapping to GPIO ids
-    'led': 21,
-    'exit': 7,
-    'night': 8,
-    'emerg': 9,
-    'key': 10,
-    'out1': 11
-}
+class Config:
+    def __init__(self, fname):
+        with open(fname, "r") as f:
+            cfgGpio = load(f)
+        self.inputs = cfgGpio["inputs"]
+        self.outputs = cfgGpio["outputs"]
 
 class DoorHal:
-    def __init__(self):
+    def __init__(self, cfg):
         import RPi.GPIO as gpio
+        self.cfg = cfg
         self.gpio = gpio
         self.gpio.setmode(gpio.BCM)
         self.gpio.setwarnings(False)
         
-        for i in inputs:
-            self.gpio.setup(inputs[i], self.gpio.IN)
-        for o in outputs:
-            self.gpio.setup(outputs[o], self.gpio.OUT, initial=0)
+        for i in self.cfg.inputs:
+            self.gpio.setup(self.cfg.inputs[i], self.gpio.IN)
+        for o in self.cfg.outputs:
+            self.gpio.setup(self.cfg.outputs[o], self.gpio.OUT, initial=0)
     
     def setOutput(self, name, val):
-        assert (name in outputs) and (val in (True,False))
+        assert (name in self.cfg.outputs) and (val in (True,False))
         print('output', val, 'on', name)
-        self.gpio.output(outputs[name], val)
+        self.gpio.output(self.cfg.outputs[name], val)
         
     def getInput(self, name):
-        assert name in inputs
-        return self.gpio.input(inputs[name]) == self.gpio.HIGH
+        assert name in self.cfg.inputs
+        return self.gpio.input(self.cfg.inputs[name]) == self.gpio.HIGH
         
     def registerInputCallback(self, name, callback, falling=True):
-        assert name in inputs
-        self.gpio.add_event_detect(inputs[name],
+        assert name in self.cfg.inputs
+        self.gpio.add_event_detect(self.cfg.inputs[name],
             self.gpio.FALLING if falling else self.gpio.RISING,
             callback=callback
         )
@@ -67,7 +59,9 @@ class DoorHal:
         self.gpio.cleanup()
         
 class DoorHalSim:
-    def __init__(self):
+    def __init__(self, cfg):
+        self.cfg = cfg
+
         import readline
         from threading import Thread        
         self.worker = Thread(target=self.__inputLoop)
@@ -75,7 +69,7 @@ class DoorHalSim:
         self.inputStates = {}
         self.inputCallbacksFalling = {}
         self.inputCallbacksRising = {}
-        for i in inputs:
+        for i in self.cfg.inputs:
             self.inputStates[i] = 1
             self.inputCallbacksFalling[i] = []
             self.inputCallbacksRising[i] = []
@@ -84,7 +78,7 @@ class DoorHalSim:
         try:
             while True:
                 inp = input("> ")
-                if inp in inputs:
+                if inp in self.cfg.inputs:
                     self.inputStates[inp] = 0
                     for cb in self.inputCallbacksFalling[inp]:
                         cb(0)
@@ -98,15 +92,15 @@ class DoorHalSim:
             return
         
     def setOutput(self, name, val):
-        assert (name in outputs) and (val in (True,False))
+        assert (name in self.cfg.outputs) and (val in (True,False))
         print("output", name, "=", val)
 
     def getInput(self, name):
-        assert name in inputs
+        assert name in self.cfg.inputs
         return self.inputStates[name]
 
     def registerInputCallback(self, name, callback, falling=True):
-        assert name in inputs
+        assert name in self.cfg.inputs
         if falling:
             self.inputCallbacksFalling[name].append(callback)
         else:
@@ -119,6 +113,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     
     p = ArgumentParser(description='Test DoorHal')
+    p.add_argument('confFile', help='gpio configuration file')
     p.add_argument('name', help='name of gpio')
     p.add_argument('-s', dest='sim', action='store_true', help='simulation mode')
     p.add_argument('-i', dest='input', action='store_true', help='get input')
@@ -126,10 +121,12 @@ if __name__ == '__main__':
     p.add_argument('-t', dest='time', type=int, metavar='millisecs', default=500)
     args = p.parse_args()
 
+    cfg = Config(args.confFile)
+
     if args.sim:
-        hal = DoorHalSim()
+        hal = DoorHalSim(cfg)
     else:
-        hal = DoorHal()
+        hal = DoorHal(cfg)
     
     if args.input:
         print('input', args.name, 'is', hal.getInput(args.name))

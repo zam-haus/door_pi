@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "299a51336a9e6b16ea08594a94d6fd3d4b8dc317a3c7d9784bc0d6a6b6b96945"
+            "sha256": "7844318a410b0b78fbf0712815499f299dec04bb8c6cbf49264c78b5c71c645c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -18,11 +18,11 @@
     "default": {
         "decorated-paho-mqtt": {
             "hashes": [
-                "sha256:4bb5abaca33c5f6f76669dd312b9ca821de871cbd38d8e90066d58ce06a98e53",
-                "sha256:dd0dfa9e8850d1466e637964e8b6e3273468b1809b93046550c67da0cc836464"
+                "sha256:d134f7220dd60281f5f514094ea7ef7582591c771a6f64e1c94325742db9942f",
+                "sha256:e5eb6a995f95d4a601163ed6c4dae403be42db3dd31c9f37f908d88b0b2d9347"
             ],
             "index": "pypi",
-            "version": "==1.0.4"
+            "version": "==1.0.5"
         },
         "docopt": {
             "hashes": [
@@ -33,9 +33,23 @@
         },
         "paho-mqtt": {
             "hashes": [
-                "sha256:9feb068e822be7b3a116324e01fb6028eb1d66412bf98595ae72698965cb1cae"
+                "sha256:2a8291c81623aec00372b5a85558a372c747cbca8e9934dfe218638b8eefc26f"
             ],
-            "version": "==1.5.1"
+            "version": "==1.6.1"
+        },
+        "rpi.gpio": {
+            "hashes": [
+                "sha256:15311d3b063b71dee738cd26570effc9985a952454d162937c34e08c0fc99902",
+                "sha256:26b2ade4bb353bbe5417a64e40b45cdf00a82f27c2d320c0dd46c59751959d77",
+                "sha256:29226823da8b5ccb9001d795a944f2e00924eeae583490f0bc7317581172c624",
+                "sha256:57b6c044ef5375a78c8dda27cdfadf329e76aa6943cd6cffbbbd345a9adf9ca5",
+                "sha256:77afb817b81331ce3049a4b8f94a85e41b7c404d8e56b61ac0f1eb75c3120868",
+                "sha256:96ea7e5bf6bf592828487bfa7d3d1d0e432d5d1682e9e33b4dab398914628fcd",
+                "sha256:b86b66dc02faa5461b443a1e1f0c1d209d64ab5229696f32fb3b0215e0600c8c",
+                "sha256:cd61c4b03c37b62bba4a5acfea9862749c33c618e0295e7e90aa4713fb373b70"
+            ],
+            "index": "pypi",
+            "version": "==0.7.1"
         }
     },
     "develop": {}

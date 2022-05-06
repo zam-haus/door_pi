@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 decorated-paho-mqtt = "*"
 docopt = "*"
+"rpi.gpio" = "*"
 
 [dev-packages]
 

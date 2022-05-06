@@ -1,0 +1,17 @@
+{
+    "inputs": {
+        "gong": 22,
+        "light": 23,
+        "sw1": 24,
+        "sw2": 25,
+        "sw3": 26,
+    },
+    "outputs": {
+        "led": 21,
+        "exit": 7,
+        "night": 8,
+        "emerg": 9,
+        "key": 10,
+        "out1": 11,
+    }
+}

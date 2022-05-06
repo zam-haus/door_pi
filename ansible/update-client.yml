@@ -19,7 +19,7 @@
         - ../door_manager/Pipfile
         - ../door_manager/Pipfile.lock
         - ../door_manager/config.json
-        - ../door_manager/config-gpio2.json
+        - ../door_manager/config-gpio-r2.json
     - name: ensure ro root
       ansible.posix.mount:
         path: /

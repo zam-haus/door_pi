@@ -54,6 +54,13 @@
       mode: 0600
       owner: '1000'
       group: '1000'
+  - name: set hostname
+    ansible.builtin.copy:
+      content: "{{host}}"
+      dest: /mnt/etc/hostname
+      mode: 0644
+      owner: root
+      group: root
   - name: unmount root partition
     ansible.posix.mount:
       path: /mnt

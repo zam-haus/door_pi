@@ -19,12 +19,16 @@ from signal import SIGTERM
 from time import sleep
 from json import load
 
-class Config:
-    def __init__(self, fname):
-        with open(fname, "r") as f:
-            cfgGpio = load(f)
-        self.inputs = cfgGpio["inputs"]
-        self.outputs = cfgGpio["outputs"]
+class HalConfig:
+    def __init__(self, fname=None):
+        if fname is None:
+            self.inputs = {}
+            self.outputs = {}
+        else:
+            with open(fname, "r") as f:
+                cfgGpio = load(f)
+            self.inputs = cfgGpio["inputs"]
+            self.outputs = cfgGpio["outputs"]
 
 class DoorHal:
     def __init__(self, cfg):
@@ -121,7 +125,7 @@ if __name__ == '__main__':
     p.add_argument('-t', dest='time', type=int, metavar='millisecs', default=500)
     args = p.parse_args()
 
-    cfg = Config(args.confFile)
+    cfg = HalConfig(args.confFile)
 
     if args.sim:
         hal = DoorHalSim(cfg)

@@ -19,15 +19,15 @@
         - ../door_manager/Pipfile
         - ../door_manager/Pipfile.lock
         - ../door_manager/config-{{inventory_hostname}}/config.json
-        - ../door_manager/config-gpio-r1.json
-        - ../door_manager/config-gpio-r2.json
-    - name: ensure ro root
-      ansible.posix.mount:
-        path: /
-        opts: ro,defaults,noatime
-        state: remounted
+        - ../door_manager/config-{{inventory_hostname}}/config-gpio-r2.json
     - name: systemd reload
       ansible.builtin.systemd:
         name: door-manager
         enabled: yes
         state: restarted
+    - name: ensure ro root
+      ansible.posix.mount:
+        path: /
+        opts: ro,defaults,noatime
+        state: remounted
+        

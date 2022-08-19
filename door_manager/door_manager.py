@@ -75,7 +75,7 @@ class DoorManager(GenericMqttEndpoint):
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
 
-async def input_loop(doorman: DoorManager, hal: DoorHal):
+async def presence_loop(doorman: DoorManager, hal: DoorHal):
     while asyncio.get_event_loop().is_running():
         try:
             presence = hal.getInput("sw1")
@@ -100,17 +100,8 @@ def sigusr1_handler(signum, frame):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
+    loop = asyncio.get_event_loop()
 
-    if args['--simulate']:
-        log.warning("Running in simulation mode")
-        hal = DoorHalSim()
-        halcfg = HalConfig()
-    else:
-        halcfg = HalConfig(config["gpio-config"])
-        hal = DoorHal(halcfg)
-        if "gong" in halcfg.inputs:
-            hal.registerInputCallback("gong", gong_handler, falling=False)
-        
     signal(SIGUSR1, sigusr1_handler)
     signal(SIGTERM, sigterm_handler)
 
@@ -121,9 +112,20 @@ if __name__ == '__main__':
         config['mqtt']['tls']
     )
     dm.connect()
-    
 
-    loop = asyncio.get_event_loop()
-    if "sw1" in halcfg.inputs:
-        loop.create_task(input_loop(dm, hal))
+    if args['--simulate']:
+        log.warning("Running in simulation mode")
+        hal = DoorHalSim()
+        halcfg = HalConfig()
+    else:
+        halcfg = HalConfig(config["gpio-config"])
+        hal = DoorHal(halcfg)
+        if "input-type" in config:
+            if config["input-type"] == "gildor":
+                hal.registerInputCallback("gong", gong_handler, falling=False)
+                loop.create_task(presence_loop(dm, hal))
+            elif config["input-type"] == "dormakaba":
+                pass
+        
+    
     loop.run_forever()

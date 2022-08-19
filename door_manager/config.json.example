@@ -14,5 +14,9 @@
             "keepalive": 10
         },
         "tls": false
-    }
+    },
+    "gpio-config": "config-gpio-r1.json",
+    "input-type": "gildor",
+    "open-time": 1,
+    "open-gpio": "key"
 }

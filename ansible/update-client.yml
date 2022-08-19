@@ -19,8 +19,9 @@
         - ../door_manager/Pipfile
         - ../door_manager/Pipfile.lock
         - ../door_manager/config-{{inventory_hostname}}/config.json
+        - ../door_manager/config-{{inventory_hostname}}/config-gpio-r1.json
         - ../door_manager/config-{{inventory_hostname}}/config-gpio-r2.json
-    - name: systemd reload
+    - name: door-manager reload
       ansible.builtin.systemd:
         name: door-manager
         enabled: yes

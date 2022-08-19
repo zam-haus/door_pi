@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo systemctl kill -s SIGUSR1 door-manager.service

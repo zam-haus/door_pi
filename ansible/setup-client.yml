@@ -22,8 +22,17 @@
         - ../door_manager/door_manager.py
         - ../door_manager/Pipfile
         - ../door_manager/Pipfile.lock
-        - ../door_manager/config.json
-        - ../door_manager/config-gpio-r2.json
+        - ../door_manager/config-{{inventory_hostname}}/config.json
+        - ../door_manager/config-{{inventory_hostname}}/config-gpio-r1.json
+        - ../door_manager/config-{{inventory_hostname}}/config-gpio-r2.json
+    - name: install local open script
+      ansible.builtin.copy:
+        src: '{{item}}'
+        dest: /usr/local/bin/
+        owner: root
+        group: root
+      loop:
+        - ../door_manager/door-open
     - name: install daemon
       ansible.builtin.copy:
         src: ../door_manager/door-manager.service

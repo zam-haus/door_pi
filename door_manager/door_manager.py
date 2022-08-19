@@ -76,12 +76,26 @@ class DoorManager(GenericMqttEndpoint):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
 
 async def presence_loop(doorman: DoorManager, hal: DoorHal):
+    gpioPresence = config["presence-gpio"]
+    gpioPresenceInv = config["presence-gpio-inverted"]
     while asyncio.get_event_loop().is_running():
         try:
-            presence = hal.getInput("sw1")
+            presence = hal.getInput(gpioPresence)
+            if gpioPresenceInv:
+                presence = not presence
             doorman.publish("door/+/presence", config["door-id"], qos=2, retain=True, payload=str(presence).lower())
         except:
             log.error("Failed to retrieve or publish inputs", exc_info=True)
+        await asyncio.sleep(5)
+
+async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
+    while asyncio.get_event_loop().is_running():
+        try:
+            isOpen = (not hal.getInput("in2")) or hal.getInput("in5")
+            doorman.publish("door/+/is_open", config["door-id"], qos=2, retain=True, payload=str(isOpen).lower())
+            log.info("door status is_open=" + str(isOpen))
+        except:
+            log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
         await asyncio.sleep(5)
 
 def gong_handler(v):
@@ -125,7 +139,6 @@ if __name__ == '__main__':
                 hal.registerInputCallback("gong", gong_handler, falling=False)
                 loop.create_task(presence_loop(dm, hal))
             elif config["input-type"] == "dormakaba":
-                pass
-        
+                loop.create_task(dormakaba_open_loop(dm, hal))
     
     loop.run_forever()

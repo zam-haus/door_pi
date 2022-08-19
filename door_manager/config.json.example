@@ -18,5 +18,7 @@
     "gpio-config": "config-gpio-r1.json",
     "input-type": "gildor",
     "open-time": 1,
-    "open-gpio": "key"
+    "open-gpio": "key",
+    "presence-gpio": "sw1",
+    "presence-gpio-inverted": false
 }

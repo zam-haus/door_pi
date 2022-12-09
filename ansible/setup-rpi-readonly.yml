@@ -39,6 +39,10 @@
         name: NetworkManager
         enabled: yes
         state: started
+      ansible.builtin.systemd:
+        name: dhcpcd
+        enabled: no
+        state: stopped
     - name: link resolv.conf to run
       ansible.builtin.file:
         src: /run/NetworkManager/resolv.conf

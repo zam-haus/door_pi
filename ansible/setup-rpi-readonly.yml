@@ -76,6 +76,20 @@
         fstype: tmpfs
         opts: mode=0700
         state: present
+    - name: configure tmpfs on /var/lib/NetworkManager
+      ansible.posix.mount:
+        src: tmpfs
+        path: /var/lib/NetworkManager
+        fstype: tmpfs
+        opts: mode=0755
+        state: present
+    - name: configure tmpfs on /var/lib/logrotate
+      ansible.posix.mount:
+        src: tmpfs
+        path: /var/lib/logrotate
+        fstype: tmpfs
+        opts: mode=0755
+        state: present
     - name: configure tmpfs on /var/log
       ansible.posix.mount:
         src: tmpfs

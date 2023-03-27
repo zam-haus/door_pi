@@ -88,12 +88,24 @@ async def presence_loop(doorman: DoorManager, hal: DoorHal):
             log.error("Failed to retrieve or publish inputs", exc_info=True)
         await asyncio.sleep(5)
 
+dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
+    "in3": "verriegelt", "in4": "druecker", "in5": "steuerfalle", \
+    "in6": "daueroffen"}
+
 async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
     while asyncio.get_event_loop().is_running():
         try:
             isOpen = (not hal.getInput("in2")) or hal.getInput("in5")
             doorman.publish("door/+/is_open", config["door-id"], qos=2, retain=True, payload=str(isOpen).lower())
             log.info("door status is_open=" + str(isOpen))
+
+            for k in dormakabaMapping.keys():
+                name = dormakabaMapping[k]
+                if hal.exist(k):
+                    val = hal.getInput(k)
+                    doorman.publish("door/+/input_%s" % name, \
+                        config["door-id"], qos=2, retain=True, \
+                            payload=str(val).lower())
         except:
             log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
         await asyncio.sleep(5)
@@ -127,18 +139,18 @@ if __name__ == '__main__':
     )
     dm.connect()
 
+    halcfg = HalConfig(config["gpio-config"])
     if args['--simulate']:
         log.warning("Running in simulation mode")
-        hal = DoorHalSim()
-        halcfg = HalConfig()
+        hal = DoorHalSim(halcfg)
     else:
-        halcfg = HalConfig(config["gpio-config"])
         hal = DoorHal(halcfg)
-        if "input-type" in config:
-            if config["input-type"] == "gildor":
-                hal.registerInputCallback("gong", gong_handler, falling=False)
-                loop.create_task(presence_loop(dm, hal))
-            elif config["input-type"] == "dormakaba":
-                loop.create_task(dormakaba_open_loop(dm, hal))
-    
+
+    if "input-type" in config:
+        if config["input-type"] == "gildor":
+            hal.registerInputCallback("gong", gong_handler, falling=False)
+            loop.create_task(presence_loop(dm, hal))
+        elif config["input-type"] == "dormakaba":
+            loop.create_task(dormakaba_open_loop(dm, hal))
+
     loop.run_forever()

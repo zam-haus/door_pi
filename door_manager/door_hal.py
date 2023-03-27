@@ -42,6 +42,9 @@ class DoorHal:
             self.gpio.setup(self.cfg.inputs[i], self.gpio.IN)
         for o in self.cfg.outputs:
             self.gpio.setup(self.cfg.outputs[o], self.gpio.OUT, initial=0)
+
+    def exist(self, name):
+        return name in self.cfg.inputs
     
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in (True,False))
@@ -94,7 +97,10 @@ class DoorHalSim:
             print()
             kill(getpid(), SIGTERM)
             return
-        
+
+    def exist(self, name):
+        return name in self.cfg.inputs
+      
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in (True,False))
         print("output", name, "=", val)

@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "door_if2-rescue")(type "KiCad")(uri "${KIPRJMOD}/door_if2-rescue.kicad_sym")(options "")(descr ""))
+  (lib (name "door_if3_usb-rescue")(type "KiCad")(uri "${KIPRJMOD}/door_if3_usb_machine-rescue.kicad_sym")(options "")(descr ""))
+)

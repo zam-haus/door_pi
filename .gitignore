@@ -1,3 +1,5 @@
 *-bak
 door_manager/config.json
 door_manager/config-*
+*-backups
+~*

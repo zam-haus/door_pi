@@ -39,6 +39,7 @@
         name: NetworkManager
         enabled: yes
         state: started
+    - name: disable dhcpcd
       ansible.builtin.systemd:
         name: dhcpcd
         enabled: no

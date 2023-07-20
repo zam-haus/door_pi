@@ -17,7 +17,7 @@
 from os import kill, getpid
 from signal import SIGTERM
 from time import sleep
-from json import load
+from json import load, loads, JSONDecodeError
 
 class HalConfig:
     def __init__(self, fname=None):
@@ -45,6 +45,11 @@ class DoorHal:
 
     def exist(self, name):
         return name in self.cfg.inputs
+
+    def click(self, name, duration=None):
+        self.setOutput(name, True)
+        sleep(duration)
+        self.setOutput(name, False)
     
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in (True,False))
@@ -64,7 +69,62 @@ class DoorHal:
 
     def cleanup(self):
         self.gpio.cleanup()
+
+class DoorHalUSB:
+    def __init__(self, cfg):
+        import serial
+        self.cfg = cfg
+        self.s = serial.Serial(cfg.usbpath, timeout=1)
+
+        iv = self.getInputAll()
+        for i in iv:
+            self.cfg.inputs[i] = i
+
+    def exist(self, name):
+        return name in self.cfg.inputs
+    
+    def click(self, name, duration=None):
+        self.s.write("*click " + name + "\r").encode()
+        echo = self.s.readline().strip().decode()
+        assert echo == "*click " + name
+        ans = self.s.readline().strip().decode()
+        assert ans == "ok"
         
+    def getInput(self, name):
+        iv = self.getInputAll()
+        assert name in iv
+        return iv[name]
+    
+    def getInputAll(self):
+        self.s.write("*read\r".encode())
+        echo = self.s.readline().strip().decode()
+        assert echo == "*read"
+        try:
+            d = self.s.readline().strip().decode()
+            #print("usb read:", d)
+            j = loads(d)
+            print("usb json:", str(j))
+            return j
+        except JSONDecodeError:
+            print("JSONDecodeError")
+        except TimeoutError:
+            print("TimeoutError")
+        except Exception as e:
+            print("Exception:", str(e))
+
+    def setOutput(self, name, val):
+        pass
+        
+    def registerInputCallback(self, name, callback, falling=True):
+        assert name in self.cfg.inputs
+        #self.gpio.add_event_detect(self.cfg.inputs[name],
+        #    self.gpio.FALLING if falling else self.gpio.RISING,
+        #    callback=callback
+        #)
+
+    def cleanup(self):
+        pass
+   
 class DoorHalSim:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -100,6 +160,12 @@ class DoorHalSim:
 
     def exist(self, name):
         return name in self.cfg.inputs
+      
+    def click(self, name, duration):
+        assert name in self.cfg.outputs
+        setOutput(name, True)
+        sleep(duration)
+        setOutput(name, False)
       
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in (True,False))

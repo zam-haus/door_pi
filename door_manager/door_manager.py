@@ -47,12 +47,10 @@ from time import time, sleep
 from signal import signal, pause, SIGUSR1, SIGTERM
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
-from door_hal import DoorHal, DoorHalSim, HalConfig
+from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 
 def open_door():
-    hal.setOutput(config['open-gpio'], 1)
-    sleep(config['open-time'])
-    hal.setOutput(config['open-gpio'], 0)
+    hal.click(config['open-gpio'], config['open-time'])
 
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
@@ -142,12 +140,20 @@ if __name__ == '__main__':
     )
     dm.connect()
 
-    halcfg = HalConfig(config["gpio-config"])
+    if config["gpio-config"] == "usb":
+        halcfg = HalConfig()
+        halcfg.usbpath = config["usb-path"]
+    else:
+        halcfg = HalConfig(config["gpio-config"])
+
     if args['--simulate']:
         log.warning("Running in simulation mode")
         hal = DoorHalSim(halcfg)
     else:
-        hal = DoorHal(halcfg)
+        if config["gpio-config"] == "usb":
+            hal = DoorHalUSB(halcfg)
+        else:
+            hal = DoorHal(halcfg)
 
     if "input-type" in config:
         if config["input-type"] == "gildor":

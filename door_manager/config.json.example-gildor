@@ -20,5 +20,6 @@
     "open-time": 1,
     "open-gpio": "key",
     "presence-gpio": "sw1",
-    "presence-gpio-inverted": false
+    "presence-gpio-inverted": false,
+    "loglevel": "ERROR"
 }

@@ -18,5 +18,6 @@
     "gpio-config": "config-gpio-r2.json",
     "input-type": "dormakaba",
     "open-time": 1,
-    "open-gpio": "key"
+    "open-gpio": "key",
+    "loglevel": "ERROR"
 }

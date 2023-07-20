@@ -26,25 +26,28 @@ Options:
 '''
 
 import logging
+from json import loads
 from datetime import datetime
+
+with open('config.json') as fd:
+    config = loads(fd.read())
 
 FORMAT = '%(asctime)s %(processName)s#%(process)d @ %(module)s:%(name)s:%(funcName)s: %(message)s (%(filename)s:%(lineno)s)'
 logging.basicConfig(format=FORMAT, handlers=[logging.StreamHandler()], level="INFO")
 log = logging.getLogger(__name__)
 mqtt_log = logging.getLogger(__name__ + ".mqtt")
-mqtt_log.setLevel("DEBUG")
+if "loglevel" in config:
+    mqtt_log.setLevel(config["loglevel"])    
+else:
+    mqtt_log.setLevel("DEBUG")
 
 import sys
 import asyncio
-from json import loads
 from time import time, sleep
 from signal import signal, pause, SIGUSR1, SIGTERM
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
 from door_hal import DoorHal, DoorHalSim, HalConfig
-
-with open('config.json') as fd:
-    config = loads(fd.read())
 
 def open_door():
     hal.setOutput(config['open-gpio'], 1)

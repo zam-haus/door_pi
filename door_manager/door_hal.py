@@ -74,7 +74,7 @@ class DoorHalUSB:
     def __init__(self, cfg):
         import serial
         self.cfg = cfg
-        self.s = serial.Serial(cfg.usbpath, timeout=1)
+        self.s = serial.Serial(cfg.usbpath, timeout=10)
 
         iv = self.getInputAll()
         for i in iv:
@@ -84,9 +84,7 @@ class DoorHalUSB:
         return name in self.cfg.inputs
     
     def click(self, name, duration=None):
-        self.s.write("*click " + name + "\r").encode()
-        echo = self.s.readline().strip().decode()
-        assert echo == "*click " + name
+        self.s.write(("*click " + name + "\r").encode())
         ans = self.s.readline().strip().decode()
         assert ans == "ok"
         
@@ -97,11 +95,8 @@ class DoorHalUSB:
     
     def getInputAll(self):
         self.s.write("*read\r".encode())
-        echo = self.s.readline().strip().decode()
-        assert echo == "*read"
         try:
             d = self.s.readline().strip().decode()
-            #print("usb read:", d)
             j = loads(d)
             print("usb json:", str(j))
             return j
@@ -113,14 +108,13 @@ class DoorHalUSB:
             print("Exception:", str(e))
 
     def setOutput(self, name, val):
-        pass
+        cmd = "*on" if val else "*off"
+        self.s.write((cmd + " " + name + "\r").encode())
+        ans = self.s.readline().strip().decode()
+        assert ans == "ok"
         
     def registerInputCallback(self, name, callback, falling=True):
-        assert name in self.cfg.inputs
-        #self.gpio.add_event_detect(self.cfg.inputs[name],
-        #    self.gpio.FALLING if falling else self.gpio.RISING,
-        #    callback=callback
-        #)
+        pass
 
     def cleanup(self):
         pass

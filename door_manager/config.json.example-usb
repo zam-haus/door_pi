@@ -1,0 +1,25 @@
+{
+    "door-id": "1234",
+    "mqtt": {
+        "client_kwargs": {
+            "transport": "tcp"
+        },
+        "password_auth": {
+            "username": "test",
+            "password": "test"
+        },
+        "server_kwargs": {
+            "host": "127.0.0.1",
+            "port": 8001,
+            "keepalive": 10
+        },
+        "tls": false
+    },
+    "gpio-config": "usb",
+    "usb-path": "/dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_e6616407e325ac25-if00",
+    "input-type": "",
+    "open-time": 1,
+    "open-gpio": "out1",
+    "night-gpio": "out2",
+    "loglevel": "ERROR"
+}

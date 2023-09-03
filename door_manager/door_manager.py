@@ -52,6 +52,9 @@ from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 def open_door():
     hal.click(config['open-gpio'], config['open-time'])
 
+def set_night(en):
+    hal.setOutput(config['night-gpio'], en)
+
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
         super().__init__(client_kwargs, password_auth, server_kwargs, tls)
@@ -70,6 +73,17 @@ class DoorManager(GenericMqttEndpoint):
             else:
                 time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
+        except:
+            log.error("Failed to parse request", exc_info=True)
+
+    @GenericMqttEndpoint.subscribe_decorator('door/%s/night' % config['door-id'], qos=2)
+    def night(self, *, client, userdata, message):
+        log.info("Received request to set night mode")
+        # noinspection PyBroadException
+        try:
+            payload = loads(message.payload)
+            assert 'enabled' in payload
+            set_night(payload['enabled'])
         except:
             log.error("Failed to parse request", exc_info=True)
 

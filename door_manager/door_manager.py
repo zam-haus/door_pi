@@ -59,8 +59,16 @@ class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
         super().__init__(client_kwargs, password_auth, server_kwargs, tls)
 
-    @GenericMqttEndpoint.subscribe_decorator('door/%s/open' % config['door-id'], qos=2)
-    def open(self, *, client, userdata, message):
+    @GenericMqttEndpoint.subscribe_decorator('door/%s/+' % config['door-id'], qos=2)
+    def msg(self, cmd, *, client, userdata, message):
+        if cmd == "open":
+            self.open(client, userdata, message)
+        elif cmd == "night":
+            self.night(client, userdata, message)
+        else:
+            log.error("Unknown command: " + cmd)
+
+    def open(self, client, userdata, message):
         log.info("Received request to open door")
         # noinspection PyBroadException
         try:
@@ -76,8 +84,7 @@ class DoorManager(GenericMqttEndpoint):
         except:
             log.error("Failed to parse request", exc_info=True)
 
-    @GenericMqttEndpoint.subscribe_decorator('door/%s/night' % config['door-id'], qos=2)
-    def night(self, *, client, userdata, message):
+    def night(self, client, userdata, message):
         log.info("Received request to set night mode")
         # noinspection PyBroadException
         try:

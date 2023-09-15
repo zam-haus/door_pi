@@ -52,8 +52,8 @@ from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 def open_door():
     hal.click(config['open-gpio'], config['open-time'])
 
-def set_night(en):
-    hal.setOutput(config['night-gpio'], en)
+def set_day(en):
+    hal.setOutput(config['day-gpio'], en)
 
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
@@ -63,8 +63,8 @@ class DoorManager(GenericMqttEndpoint):
     def msg(self, cmd, *, client, userdata, message):
         if cmd == "open":
             self.open(client, userdata, message)
-        elif cmd == "night":
-            self.night(client, userdata, message)
+        elif cmd == "day":
+            self.day(client, userdata, message)
         else:
             log.error("Unknown command: " + cmd)
 
@@ -84,13 +84,13 @@ class DoorManager(GenericMqttEndpoint):
         except:
             log.error("Failed to parse request", exc_info=True)
 
-    def night(self, client, userdata, message):
-        log.info("Received request to set night mode")
+    def day(self, client, userdata, message):
+        log.info("Received request to set day mode")
         # noinspection PyBroadException
         try:
             payload = loads(message.payload)
             assert 'enabled' in payload
-            set_night(payload['enabled'])
+            set_day(payload['enabled'])
         except:
             log.error("Failed to parse request", exc_info=True)
 

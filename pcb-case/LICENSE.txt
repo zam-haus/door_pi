@@ -1,0 +1,2 @@
+DINrail_Clip: DIN rail clip basic module for own modification by marauder156 on Thingiverse: https://www.thingiverse.com/thing:3640994
+DINrail_Clip (re-used in if4-usb-case) was created by Thingiverse user marauder156, and is licensed under Creative Commons - Attribution

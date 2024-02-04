@@ -3,6 +3,7 @@
 import sys
 import serial
 import json
+import readline
 
 def cmd(c):
     s.write((c + "\n").encode())
@@ -21,4 +22,17 @@ print("unique id: " + uid)
 for k in sorted(inp.keys()):
     print(k + "=" + inp[k], end=" ")
 print()
+
+try:
+    while True:
+        inp = input("> ")
+        if len(inp) < 2:
+            continue
+        r = cmd(inp)
+        print(r)
+
+except KeyboardInterrupt:
+    sys.exit(0)
+except EOFError:
+    sys.exit(0)
 

@@ -50,10 +50,14 @@ from decorated_paho_mqtt import GenericMqttEndpoint
 from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 
 def open_door():
-    hal.click(config['open-gpio'], config['open-time'])
+    hal.impulse(config['open-gpio'], config['open-time'])
 
 def set_day(en):
-    hal.setOutput(config['day-gpio'], en)
+    if config['input-type'] == "dormakaba_ed_100_250":
+        hal.setOutput(config['day-gpio'], en)
+        hal.setOutput(config['night-gpio'], not en)
+    else:
+        hal.setOutput(config['day-gpio'], en)
 
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
@@ -182,5 +186,7 @@ if __name__ == '__main__':
             loop.create_task(presence_loop(dm, hal))
         elif config["input-type"] == "dormakaba":
             loop.create_task(dormakaba_open_loop(dm, hal))
+        elif config["input-type"] == "dormakaba_ed_100_250":
+            set_day(False)
 
     loop.run_forever()

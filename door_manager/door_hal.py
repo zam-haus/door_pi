@@ -46,7 +46,7 @@ class DoorHal:
     def exist(self, name):
         return name in self.cfg.inputs
 
-    def click(self, name, duration=None):
+    def impulse(self, name, duration=None):
         self.setOutput(name, True)
         sleep(duration)
         self.setOutput(name, False)
@@ -83,8 +83,8 @@ class DoorHalUSB:
     def exist(self, name):
         return name in self.cfg.inputs
     
-    def click(self, name, duration=None):
-        self.s.write(("*click " + name + "\r").encode())
+    def impulse(self, name, duration=None):
+        self.s.write(("*impulse " + name + "\r").encode())
         ans = self.s.readline().strip().decode()
         assert ans == "ok"
         
@@ -98,7 +98,6 @@ class DoorHalUSB:
         try:
             d = self.s.readline().strip().decode()
             j = loads(d)
-            print("usb json:", str(j))
             return j
         except JSONDecodeError:
             print("JSONDecodeError")
@@ -155,7 +154,7 @@ class DoorHalSim:
     def exist(self, name):
         return name in self.cfg.inputs
       
-    def click(self, name, duration):
+    def impulse(self, name, duration):
         assert name in self.cfg.outputs
         setOutput(name, True)
         sleep(duration)

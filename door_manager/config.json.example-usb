@@ -17,9 +17,11 @@
     },
     "gpio-config": "usb",
     "usb-path": "/dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_e6616407e325ac25-if00",
-    "input-type": "",
+    "input-type": "dormakaba_ed_100_250",
     "open-time": 1,
-    "open-gpio": "out1",
-    "night-gpio": "out2",
+    "open-gpio": "out3",
+    "day-gpio": "out2",
+    "night-gpio": "out1",
+    "permaopen-input": "in3",
     "loglevel": "ERROR"
 }

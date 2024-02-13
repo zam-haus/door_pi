@@ -136,6 +136,21 @@ async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
             log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
         await asyncio.sleep(5)
 
+async def usb_permaopen_loop(doorman: DoorManager, hal: DoorHal):
+    last = None
+    while asyncio.get_event_loop().is_running():
+        po = hal.getInput(config['permaopen-input'])
+        if po == 'H':
+            set_day(True)
+            if po != last:
+                log.info("setting day")
+        else:
+            set_day(False)
+            if po != last:
+                log.info("setting night")
+        last = po
+        await asyncio.sleep(5)
+
 def gong_handler(v):
     try:
         dm.publish("door/+/gong", config["door-id"], qos=2, retain=False)
@@ -188,5 +203,6 @@ if __name__ == '__main__':
             loop.create_task(dormakaba_open_loop(dm, hal))
         elif config["input-type"] == "dormakaba_ed_100_250":
             set_day(False)
+            loop.create_task(usb_permaopen_loop(dm, hal))
 
     loop.run_forever()

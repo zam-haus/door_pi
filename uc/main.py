@@ -66,6 +66,10 @@ for k in cfg["outputs"]:
     outputs[k] = Pin(cfg["outputs"][k][0], Pin.IN, pull=None)
     set_output_idle(k)
 
+input_status = {}
+for k in cfg["inputs"]:
+    input_status[k] = get_input(k)
+
 auto_off = []
 
 while True:

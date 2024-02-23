@@ -151,6 +151,12 @@ async def usb_permaopen_loop(doorman: DoorManager, hal: DoorHal):
         last = po
         await asyncio.sleep(5)
 
+async def usb_push_pinstatus(doorman: DoorManager, hal: DoorHal):
+    ev = hal.getEvent()
+    if ev is not None:
+        log.info("usb_push_instatus: got %s" % ev)
+    await asyncio.sleep(0.2)
+
 def gong_handler(v):
     try:
         dm.publish("door/+/gong", config["door-id"], qos=2, retain=False)
@@ -204,5 +210,6 @@ if __name__ == '__main__':
         elif config["input-type"] == "dormakaba_ed_100_250":
             set_day(False)
             loop.create_task(usb_permaopen_loop(dm, hal))
+            loop.create_task(usb_push_pinstatus(dm, hal))
 
     loop.run_forever()

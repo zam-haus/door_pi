@@ -18,6 +18,8 @@ from os import kill, getpid
 from signal import SIGTERM
 from time import sleep
 from json import load, loads, JSONDecodeError
+from queue import Queue
+from threading import Lock
 
 class HalConfig:
     def __init__(self, fname=None):
@@ -75,18 +77,38 @@ class DoorHalUSB:
         import serial
         self.cfg = cfg
         self.s = serial.Serial(cfg.usbpath, timeout=10)
+        self.slock = Lock()
+        self.eventq = Queue()
 
         iv = self.getInputAll()
         for i in iv:
             self.cfg.inputs[i] = i
 
+    def __readline(self):
+        l = self.s.readline().strip().decode()
+        while l.startswith("!"):
+            self.eventq.put(l)
+            l = self.s.readline().strip().decode()
+        return l
+
+    def __checkok(self):
+        l = self.__readline()
+        assert l == "ok"
+
+    def getEvent(self):
+        with self.slock:
+            if self.s.in_waiting > 0:
+                self.__readline()
+            if not self.eventq.empty():
+                return self.eventq.get()[1:]
+
     def exist(self, name):
         return name in self.cfg.inputs
     
     def impulse(self, name, duration=None):
-        self.s.write(("*impulse " + name + "\r").encode())
-        ans = self.s.readline().strip().decode()
-        assert ans == "ok"
+        with self.slock:
+            self.s.write(("*impulse " + name + "\r").encode())
+            self.__checkok()
         
     def getInput(self, name):
         iv = self.getInputAll()
@@ -94,23 +116,24 @@ class DoorHalUSB:
         return iv[name]
     
     def getInputAll(self):
-        self.s.write("*read\r".encode())
-        try:
-            d = self.s.readline().strip().decode()
-            j = loads(d)
-            return j
-        except JSONDecodeError:
-            print("JSONDecodeError")
-        except TimeoutError:
-            print("TimeoutError")
-        except Exception as e:
-            print("Exception:", str(e))
+        with self.slock:
+            self.s.write("*read\r".encode())
+            try:
+                d = self.__readline()
+                j = loads(d)
+                return j
+            except JSONDecodeError:
+                print("JSONDecodeError")
+            except TimeoutError:
+                print("TimeoutError")
+            except Exception as e:
+                print("Exception:", str(e))
 
     def setOutput(self, name, val):
-        cmd = "*on" if val else "*off"
-        self.s.write((cmd + " " + name + "\r").encode())
-        ans = self.s.readline().strip().decode()
-        assert ans == "ok"
+        with self.slock:
+            cmd = "*on" if val else "*off"
+            self.s.write((cmd + " " + name + "\r").encode())
+            self.__checkok()
         
     def registerInputCallback(self, name, callback, falling=True):
         pass

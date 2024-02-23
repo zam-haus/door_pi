@@ -149,7 +149,7 @@ async def usb_permaopen_loop(doorman: DoorManager, hal: DoorHal):
             if po != last:
                 log.info("setting night")
         last = po
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
 
 async def usb_push_pinstatus(doorman: DoorManager, hal: DoorHal):
     ev = hal.getEvent()

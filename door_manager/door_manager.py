@@ -49,13 +49,19 @@ from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
 from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 
+lastOpenCmd = 0
+
 def open_door():
+    global lastOpenCmd
     hal.impulse(config['open-gpio'], config['open-time'])
+    lastOpenCmd = time()
 
 def set_day(en):
     if config['input-type'] == "dormakaba_ed_100_250":
         hal.setOutput(config['day-gpio'], en)
         hal.setOutput(config['night-gpio'], not en)
+    elif config['input-type'] == "dormakaba":
+        hal.setOutput(config['open-gpio'], en)
     else:
         hal.setOutput(config['day-gpio'], en)
 
@@ -83,7 +89,7 @@ class DoorManager(GenericMqttEndpoint):
             if now < float(not_after):
                 open_door()
             else:
-                time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
+                time_str = datetime.utcfromtimestamp(int(float(not_after))).strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
         except:
             log.error("Failed to parse request", exc_info=True)
@@ -140,14 +146,19 @@ async def usb_permaopen_loop(doorman: DoorManager, hal: DoorHal):
     last = None
     while asyncio.get_event_loop().is_running():
         po = hal.getInput(config['permaopen-input'])
-        if po == 'H':
+        po_active = 'H'
+        if 'permaopen-active' in config:
+            po_active = config['permaopen-active']
+
+        if po == po_active:
             set_day(True)
             if po != last:
                 log.info("setting day")
         else:
-            set_day(False)
-            if po != last:
-                log.info("setting night")
+            if (time()-lastOpenCmd) > config['open-time']: # prevent night resetting open command
+                set_day(False)
+                if po != last:
+                    log.info("setting night with input " + po)
         last = po
         await asyncio.sleep(1)
 
@@ -206,7 +217,9 @@ if __name__ == '__main__':
             hal.registerInputCallback("gong", gong_handler, falling=False)
             loop.create_task(presence_loop(dm, hal))
         elif config["input-type"] == "dormakaba":
+            set_day(False)
             loop.create_task(dormakaba_open_loop(dm, hal))
+            loop.create_task(usb_permaopen_loop(dm, hal))
         elif config["input-type"] == "dormakaba_ed_100_250":
             set_day(False)
             loop.create_task(usb_permaopen_loop(dm, hal))

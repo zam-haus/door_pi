@@ -1,0 +1,34 @@
+{
+    "door-id": "REDACTED",
+    "mqtt": {
+        "client_kwargs": {
+            "transport": "websockets"
+        },
+        "password_auth": {
+            "username": "REDACTED",
+            "password": "REDACTED"
+        },
+        "server_kwargs": {
+            "host": "mqtt.sesam.zam.haus",
+            "port": 443,
+            "keepalive": 10
+        },
+        "tls": true
+    },
+    "gpio-config": "usb",
+    "usb-path": "/dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_e6611c08cb9f6d22-if00",
+    "input-type": "dtn80",
+    "open-time": 1,
+    "open-gpio": "out1",
+    "loglevel": "ERROR",
+    "programs": {
+        "closed": ["out2"],
+        "exitonly": ["out3"],
+        "bothways": ["out4"],
+        "manual": ["out5"],
+        "permaopen": ["out6"]
+    },
+    "cycle-programs": ["closed", "manual", "exitonly", "bothways", "permaopen"],
+    "cycle-forward-input": "in1",
+    "cycle-backward-input": "in2"
+}

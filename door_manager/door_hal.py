@@ -84,10 +84,11 @@ class DoorHalUSB:
         for i in iv:
             self.cfg.inputs[i] = i
 
-    def __readline(self):
+    def __readline(self, event_only=False):
         l = self.s.readline().strip().decode()
         while l.startswith("!"):
             self.eventq.put(l)
+            if event_only: return
             l = self.s.readline().strip().decode()
         return l
 
@@ -98,7 +99,7 @@ class DoorHalUSB:
     def getEvent(self):
         with self.slock:
             if self.s.in_waiting > 0:
-                self.__readline()
+                self.__readline(event_only=True)
             if not self.eventq.empty():
                 return self.eventq.get()[1:]
 

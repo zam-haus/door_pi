@@ -53,6 +53,16 @@ def set_output_idle(o):
 def set_output_active(o):
     return set_output(o, cfg["outputs"][o][2])
 
+def get_inputs():
+    input_status = {}
+    for k in cfg["inputs"]:
+        while True:
+            current_state = get_input(k)
+            sleep(0.001)
+            if get_input(k) == current_state:
+                input_status[k] = current_state
+                break
+    return input_status
 
 cfg = load(open("config.json", "r"))
 ledv = 1
@@ -66,14 +76,18 @@ for k in cfg["outputs"]:
     outputs[k] = Pin(cfg["outputs"][k][0], Pin.IN, pull=None)
     set_output_idle(k)
 
-input_status = {}
-for k in cfg["inputs"]:
-    input_status[k] = get_input(k)
+prev_input_status = get_inputs()
 
 auto_off = []
 
 while True:
     outputs["led"].value(ledv)
+
+    # if an input changed, print an interrupt message
+    input_status = get_inputs()
+    if input_status != prev_input_status:
+        print("!", dumps(input_status))
+    prev_input_status = input_status
 
     line = read()
     if len(line) > 0:
@@ -90,10 +104,7 @@ while True:
             print(cfg["idn"])
 
         elif cmd == "*read":
-            r = {}
-            for k in inputs:
-                r[k] = get_input(k)
-            print(dumps(r))
+            print(dumps(get_inputs()))
 
         elif (cmd == "*impulse") and (len(elem) >= 2):
             name = elem[1]

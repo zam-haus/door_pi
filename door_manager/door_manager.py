@@ -62,6 +62,7 @@ def set_day(en):
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
         super().__init__(client_kwargs, password_auth, server_kwargs, tls)
+        self.program = "closed"
 
     @GenericMqttEndpoint.subscribe_decorator('door/%s/+' % config['door-id'], qos=2)
     def msg(self, cmd, *, client, userdata, message):
@@ -100,6 +101,51 @@ class DoorManager(GenericMqttEndpoint):
 
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
+    def set_program(self, hal, program):
+        if program not in config["programs"]:
+            log.error("Requested unknown door program: " + program)
+        output_program(hal, program)
+        self.program = program
+    def cycle_program(self, hal, direction=1):
+        """cycle forward (direction=1) or backward through the states (direction=-1)"""
+        # when in a not-cycleable state, initialize to first
+        if self.program not in config["cycle-programs"]:
+            self.set_program(config["cycle-programs"][0])
+            return
+        ind = config["cycle-programs"].index(self.program)
+        ind = (ind + direction) % len(config["cycle-programs"])
+        self.set_program(hal, config["cycle-programs"][ind])
+
+def output_program(hal: DoorHalUSB, program):
+    # turn everything off
+    s = set()
+    for gpios in config["programs"].values():
+        s.update(gpios)
+    for gpio in s:
+        hal.setOutput(gpio, False)
+    # enable the gpios for the program
+    for gpio in config["programs"][program]:
+        hal.setOutput(gpio, True)
+
+
+async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):
+    output_program(hal, doorman.program)
+    f = config["cycle-forward-input"]
+    b = config["cycle-backward-input"]
+    inputs = {f: '?', b: '?'}
+    while asyncio.get_event_loop().is_running():
+        event = hal.getEvent()
+        if event is None:
+            await asyncio.sleep(0.5)
+            continue
+        prev_inputs = inputs
+        inputs = loads(event)
+
+        if inputs[f] == "H" and not prev_inputs[f] == "H":
+            doorman.cycle_program(hal, 1)
+        if inputs[b] == "H" and not prev_inputs[b] == "H":
+            doorman.cycle_program(hal, -1)
+
 
 async def presence_loop(doorman: DoorManager, hal: DoorHal):
     gpioPresence = config["presence-gpio"]
@@ -211,5 +257,7 @@ if __name__ == '__main__':
             set_day(False)
             loop.create_task(usb_permaopen_loop(dm, hal))
             loop.create_task(usb_push_pinstatus(dm, hal))
+        elif config["input-type"] == "dtn80":
+            loop.create_task(cycle_loop(dm, hal))
 
     loop.run_forever()

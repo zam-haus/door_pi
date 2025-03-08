@@ -8,6 +8,7 @@ decorated-paho-mqtt = "*"
 docopt = "*"
 "rpi.gpio" = "*"
 pyserial = "*"
+rshell = "*"
 
 [dev-packages]
 

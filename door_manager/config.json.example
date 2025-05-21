@@ -31,5 +31,7 @@
     "program-change": "cycle",
     "cycle-programs": ["closed", "manual", "exitonly", "bothways", "permaopen"],
     "cycle-forward-input": "in1",
-    "cycle-backward-input": "in2"
+    "cycle-backward-input": "in2",
+    "switch-input": "in3",
+    "switch-programs": {"H": "permaopen", "Z": "closed", "L": "closed"}
 }

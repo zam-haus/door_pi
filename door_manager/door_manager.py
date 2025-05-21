@@ -127,6 +127,13 @@ async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):
         if inputs[b] == "H" and not prev_inputs[b] == "H":
             doorman.cycle_program(hal, -1)
 
+async def switch_loop(doorman: DoorManager, hal: DoorHal):
+    while asyncio.get_event_loop().is_running():
+        val = hal.getInput(config['switch-input'])
+        program = config['switch-programs'][val]
+        doorman.set_program(hal, program)
+        await asyncio.sleep(1)
+
 
 async def presence_loop(doorman: DoorManager, hal: DoorHal):
     gpioPresence = config["presence-gpio"]
@@ -215,6 +222,8 @@ if __name__ == '__main__':
 
     if config.get("program-change", None) == "cycle":
         loop.create_task(cycle_loop(dm, hal))
+    if config.get("program-change", None) == "switch":
+        loop.create_task(switch_loop(dm, hal))
 
     if "input-type" in config:
         if config["input-type"] == "gildor":

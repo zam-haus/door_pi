@@ -52,13 +52,6 @@ from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 def open_door():
     hal.impulse(config['open-gpio'], config['open-time'])
 
-def set_day(en):
-    if config['input-type'] == "dormakaba_ed_100_250":
-        hal.setOutput(config['day-gpio'], en)
-        hal.setOutput(config['night-gpio'], not en)
-    else:
-        hal.setOutput(config['day-gpio'], en)
-
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
         super().__init__(client_kwargs, password_auth, server_kwargs, tls)
@@ -68,8 +61,6 @@ class DoorManager(GenericMqttEndpoint):
     def msg(self, cmd, *, client, userdata, message):
         if cmd == "open":
             self.open(client, userdata, message)
-        elif cmd == "day":
-            self.day(client, userdata, message)
         else:
             log.error("Unknown command: " + cmd)
 
@@ -86,16 +77,6 @@ class DoorManager(GenericMqttEndpoint):
             else:
                 time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
-        except:
-            log.error("Failed to parse request", exc_info=True)
-
-    def day(self, client, userdata, message):
-        log.info("Received request to set day mode")
-        # noinspection PyBroadException
-        try:
-            payload = loads(message.payload)
-            assert 'enabled' in payload
-            set_day(payload['enabled'])
         except:
             log.error("Failed to parse request", exc_info=True)
 
@@ -182,21 +163,6 @@ async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
             log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
         await asyncio.sleep(5)
 
-async def usb_permaopen_loop(doorman: DoorManager, hal: DoorHal):
-    last = None
-    while asyncio.get_event_loop().is_running():
-        po = hal.getInput(config['permaopen-input'])
-        if po == 'H':
-            set_day(True)
-            if po != last:
-                log.info("setting day")
-        else:
-            set_day(False)
-            if po != last:
-                log.info("setting night")
-        last = po
-        await asyncio.sleep(1)
-
 async def usb_push_pinstatus(doorman: DoorManager, hal: DoorHal):
     ev = hal.getEvent()
     if ev is not None:
@@ -247,6 +213,9 @@ if __name__ == '__main__':
         else:
             hal = DoorHal(halcfg)
 
+    if config.get("program-change", None) == "cycle":
+        loop.create_task(cycle_loop(dm, hal))
+
     if "input-type" in config:
         if config["input-type"] == "gildor":
             hal.registerInputCallback("gong", gong_handler, falling=False)
@@ -254,10 +223,6 @@ if __name__ == '__main__':
         elif config["input-type"] == "dormakaba":
             loop.create_task(dormakaba_open_loop(dm, hal))
         elif config["input-type"] == "dormakaba_ed_100_250":
-            set_day(False)
-            loop.create_task(usb_permaopen_loop(dm, hal))
             loop.create_task(usb_push_pinstatus(dm, hal))
-        elif config["input-type"] == "dtn80":
-            loop.create_task(cycle_loop(dm, hal))
 
     loop.run_forever()

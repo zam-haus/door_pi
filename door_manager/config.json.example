@@ -28,6 +28,7 @@
         "manual": ["out5"],
         "permaopen": ["out6"]
     },
+    "program-change": "cycle",
     "cycle-programs": ["closed", "manual", "exitonly", "bothways", "permaopen"],
     "cycle-forward-input": "in1",
     "cycle-backward-input": "in2"

@@ -19,14 +19,15 @@
     "usb-path": "/dev/serial/by-id/usb-MicroPython_Board_in_FS_mode_e6611c08cb9f6d22-if00",
     "input-type": "dtn80",
     "open-time": 1,
-    "open-gpio": "out1",
+    "open-gpios": {"out1": "H"},
     "loglevel": "ERROR",
+    "inactive-outputs": {"out2": "Z", "others": "Z"},
     "programs": {
-        "closed": ["out2"],
-        "exitonly": ["out3"],
-        "bothways": ["out4"],
-        "manual": ["out5"],
-        "permaopen": ["out6"]
+        "closed": {"out2": "H"},
+        "exitonly": {"out3": "H"},
+        "bothways": {"out4": "H"},
+        "manual": {"out5": "H"},
+        "permaopen": {"out6": "H"}
     },
     "program-change": "cycle",
     "cycle-programs": ["closed", "manual", "exitonly", "bothways", "permaopen"],

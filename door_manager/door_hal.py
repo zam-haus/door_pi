@@ -44,19 +44,23 @@ class DoorHal:
             self.gpio.setup(self.cfg.inputs[i], self.gpio.IN)
         for o in self.cfg.outputs:
             self.gpio.setup(self.cfg.outputs[o], self.gpio.OUT, initial=0)
+        self.outputStates = {}
 
     def exist(self, name):
         return name in self.cfg.inputs
 
-    def impulse(self, name, duration=None):
-        self.setOutput(name, True)
+    def impulse(self, name, val, duration=2.0):
+        reset=self.outputStates.get(name, "Z")
+        setOutput(name, val)
         sleep(duration)
-        self.setOutput(name, False)
+        setOutput(name, reset)
     
     def setOutput(self, name, val):
-        assert (name in self.cfg.outputs) and (val in (True,False))
+        assert val in "HL"
+        assert (name in self.cfg.outputs)
         print('output', val, 'on', name)
-        self.gpio.output(self.cfg.outputs[name], val)
+        self.gpio.output(self.cfg.outputs[name], {"H":True, "L":False}[val])
+        self.outputStates[name]=val
         
     def getInput(self, name):
         assert name in self.cfg.inputs
@@ -106,9 +110,13 @@ class DoorHalUSB:
     def exist(self, name):
         return name in self.cfg.inputs
     
-    def impulse(self, name, duration=None):
+    def impulse(self, name, val, duration=None):
+        assert val in "HLZ"
         with self.slock:
-            self.s.write(("*impulse " + name + "\r").encode())
+            cmd = "*impulse {name} {val}".format(name=name, val=val)
+            if duration is not None:
+                cmd += " {}".format(duration)
+            self.s.write((cmd + "\r").encode())
             self.__checkok()
         
     def getInput(self, name):
@@ -131,9 +139,9 @@ class DoorHalUSB:
                 print("Exception:", str(e))
 
     def setOutput(self, name, val):
+        assert val in "HLZ"
         with self.slock:
-            cmd = "*on" if val else "*off"
-            self.s.write((cmd + " " + name + "\r").encode())
+            self.s.write(("*set " + name + " " + val + "\r").encode())
             self.__checkok()
         
     def registerInputCallback(self, name, callback, falling=True):
@@ -150,6 +158,7 @@ class DoorHalSim:
         from threading import Thread        
         self.worker = Thread(target=self.__inputLoop)
         self.worker.start()
+        self.outputStates = {}
         self.inputStates = {}
         self.inputCallbacksFalling = {}
         self.inputCallbacksRising = {}
@@ -178,14 +187,15 @@ class DoorHalSim:
     def exist(self, name):
         return name in self.cfg.inputs
       
-    def impulse(self, name, duration):
-        assert name in self.cfg.outputs
-        setOutput(name, True)
+    def impulse(self, name, val, duration=2.0):
+        reset=self.outputStates.get(name, "Z")
+        setOutput(name, val)
         sleep(duration)
-        setOutput(name, False)
+        setOutput(name, reset)
       
     def setOutput(self, name, val):
-        assert (name in self.cfg.outputs) and (val in (True,False))
+        assert (name in self.cfg.outputs) and (val in "HLZ")
+        self.outputStates[name]=val
         print("output", name, "=", val)
 
     def getInput(self, name):

@@ -50,7 +50,8 @@ from decorated_paho_mqtt import GenericMqttEndpoint
 from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 
 def open_door():
-    hal.impulse(config['open-gpio'], config['open-time'])
+    for (pin, state) in config['open-gpios'].items():
+        hal.impulse(pin, state, config['open-time'])
 
 class DoorManager(GenericMqttEndpoint):
     def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
@@ -101,12 +102,15 @@ def output_program(hal: DoorHalUSB, program):
     # turn everything off
     s = set()
     for gpios in config["programs"].values():
-        s.update(gpios)
+        s.update(gpios.keys())
     for gpio in s:
-        hal.setOutput(gpio, False)
+        val = "Z"
+        if "inactive-outputs" in config:
+            val = config["inactive-outputs"].get(gpio, config["inactive-outputs"].get("others","Z"))
+        hal.setOutput(gpio, val)
     # enable the gpios for the program
-    for gpio in config["programs"][program]:
-        hal.setOutput(gpio, True)
+    for (gpio, val) in config["programs"][program].items():
+        hal.setOutput(gpio, val)
 
 
 async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):

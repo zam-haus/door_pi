@@ -118,7 +118,7 @@ async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):
     f = config["cycle-forward-input"]
     b = config["cycle-backward-input"]
     inputs = {f: '?', b: '?'}
-    while asyncio.get_event_loop().is_running():
+    while asyncio.get_running_loop().is_running():
         event = hal.getEvent()
         if event is None:
             await asyncio.sleep(0.5)
@@ -132,7 +132,7 @@ async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):
             doorman.cycle_program(hal, -1)
 
 async def switch_loop(doorman: DoorManager, hal: DoorHal):
-    while asyncio.get_event_loop().is_running():
+    while asyncio.get_running_loop().is_running():
         val = hal.getInput(config['switch-input'])
         program = config['switch-programs'][val]
         doorman.set_program(hal, program)
@@ -142,7 +142,7 @@ async def switch_loop(doorman: DoorManager, hal: DoorHal):
 async def presence_loop(doorman: DoorManager, hal: DoorHal):
     gpioPresence = config["presence-gpio"]
     gpioPresenceInv = config["presence-gpio-inverted"]
-    while asyncio.get_event_loop().is_running():
+    while asyncio.get_running_loop().is_running():
         try:
             presence = hal.getInput(gpioPresence)
             if gpioPresenceInv:
@@ -157,7 +157,7 @@ dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
     "in6": "daueroffen"}
 
 async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
-    while asyncio.get_event_loop().is_running():
+    while asyncio.get_running_loop().is_running():
         try:
             isOpen = (not hal.getInput("in2")) or hal.getInput("in5")
             doorman.publish("door/+/is_open", config["door-id"], qos=2, retain=True, payload=str(isOpen).lower())
@@ -196,7 +196,7 @@ def sigusr1_handler(signum, frame):
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
 
     signal(SIGUSR1, sigusr1_handler)
     signal(SIGTERM, sigterm_handler)

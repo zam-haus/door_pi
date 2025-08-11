@@ -19,46 +19,53 @@
 
 Usage:
   door_manager.py
-  door_manager.py (-s | --simulate)
+  door_manager.py [-c FILE] (-s | --simulate)
 
 Options:
   -s --simulate     Use console I/O for HAL instead of RPi GPIOs
+  -c FILE           Use this config file (json) instead of ./config.json
 '''
 
 import logging
 from json import loads
 from datetime import datetime
+import sys
+import asyncio
+from time import time, sleep
+from signal import signal, pause, SIGUSR1, SIGTERM
 
-with open('config.json') as fd:
-    config = loads(fd.read())
+from docopt import docopt
+from decorated_paho_mqtt import GenericMqttEndpoint
+
+from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
+
 
 FORMAT = '%(asctime)s %(processName)s#%(process)d @ %(module)s:%(name)s:%(funcName)s: %(message)s (%(filename)s:%(lineno)s)'
 logging.basicConfig(format=FORMAT, handlers=[logging.StreamHandler()], level="INFO")
 log = logging.getLogger(__name__)
 mqtt_log = logging.getLogger(__name__ + ".mqtt")
-if "loglevel" in config:
-    mqtt_log.setLevel(config["loglevel"])    
-else:
-    mqtt_log.setLevel("DEBUG")
+mqtt_log.setLevel("DEBUG")
 
-import sys
-import asyncio
-from time import time, sleep
-from signal import signal, pause, SIGUSR1, SIGTERM
-from docopt import docopt
-from decorated_paho_mqtt import GenericMqttEndpoint
-from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
 
-def open_door():
-    for (pin, state) in config['open-gpios'].items():
-        hal.impulse(pin, state, config['open-time'])
+dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
+    "in3": "verriegelt", "in4": "druecker", "in5": "steuerfalle", \
+    "in6": "daueroffen"}
 
 class DoorManager(GenericMqttEndpoint):
-    def __init__(self, client_kwargs: dict, password_auth: dict, server_kwargs: dict, tls: bool):
-        super().__init__(client_kwargs, password_auth, server_kwargs, tls)
+    def __init__(self, config, hal: DoorHal):
+        # super().__init__ accesses self.door_id to build the endpoint.
+        self.door_id=config['door-id']
+        super().__init__(
+            config['mqtt']['client_kwargs'],
+            config['mqtt']['password_auth'],
+            config['mqtt']['server_kwargs'],
+            config['mqtt']['tls'])
+        self.config = config
+        self.hal = hal
         self.program = "closed"
 
-    @GenericMqttEndpoint.subscribe_decorator('door/%s/+' % config['door-id'], qos=2)
+
+    @GenericMqttEndpoint.subscribe_decorator(lambda self: f'door/{self.door_id}/+', qos=2)
     def msg(self, cmd, *, client, userdata, message):
         if cmd == "open":
             self.open(client, userdata, message)
@@ -74,7 +81,7 @@ class DoorManager(GenericMqttEndpoint):
             not_after = payload['not_after']
             now = time()
             if now < float(not_after):
-                open_door()
+                self.open_door()
             else:
                 time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
@@ -83,131 +90,148 @@ class DoorManager(GenericMqttEndpoint):
 
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
-    def set_program(self, hal, program):
-        if program not in config["programs"]:
+    def set_program(self, program):
+        if program not in self.config["programs"]:
             log.error("Requested unknown door program: " + program)
-        output_program(hal, program)
+        self.output_program(program)
         self.program = program
-    def cycle_program(self, hal, direction=1):
+    def cycle_program(self, direction=1):
         """cycle forward (direction=1) or backward through the states (direction=-1)"""
         # when in a not-cycleable state, initialize to first
-        if self.program not in config["cycle-programs"]:
-            self.set_program(config["cycle-programs"][0])
+        if self.program not in self.config["cycle-programs"]:
+            self.set_program(self.config["cycle-programs"][0])
             return
-        ind = config["cycle-programs"].index(self.program)
-        ind = (ind + direction) % len(config["cycle-programs"])
-        self.set_program(hal, config["cycle-programs"][ind])
+        ind = self.config["cycle-programs"].index(self.program)
+        ind = (ind + direction) % len(self.config["cycle-programs"])
+        self.set_program(self.config["cycle-programs"][ind])
 
-def output_program(hal: DoorHalUSB, program):
-    # turn everything off
-    s = set()
-    for gpios in config["programs"].values():
-        s.update(gpios.keys())
-    for gpio in s:
-        val = "Z"
-        if "inactive-outputs" in config:
-            val = config["inactive-outputs"].get(gpio, config["inactive-outputs"].get("others","Z"))
-        hal.setOutput(gpio, val)
-    # enable the gpios for the program
-    for (gpio, val) in config["programs"][program].items():
-        hal.setOutput(gpio, val)
+    def open_door(self):
+        for (pin, state) in self.config['open-gpios'].items():
+            self.hal.impulse(pin, state, self.config['open-time'])
 
-
-async def cycle_loop(doorman: DoorManager, hal: DoorHalUSB):
-    output_program(hal, doorman.program)
-    f = config["cycle-forward-input"]
-    b = config["cycle-backward-input"]
-    inputs = {f: '?', b: '?'}
-    while asyncio.get_running_loop().is_running():
-        event = hal.getEvent()
-        if event is None:
-            await asyncio.sleep(0.5)
-            continue
-        prev_inputs = inputs
-        inputs = loads(event)
-
-        if inputs[f] == "H" and not prev_inputs[f] == "H":
-            doorman.cycle_program(hal, 1)
-        if inputs[b] == "H" and not prev_inputs[b] == "H":
-            doorman.cycle_program(hal, -1)
-
-async def switch_loop(doorman: DoorManager, hal: DoorHal):
-    while asyncio.get_running_loop().is_running():
-        val = hal.getInput(config['switch-input'])
-        program = config['switch-programs'][val]
-        doorman.set_program(hal, program)
-        await asyncio.sleep(1)
+    def output_program(self, program):
+        # turn everything off
+        s = set()
+        for gpios in self.config["programs"].values():
+            s.update(gpios.keys())
+        for gpio in s:
+            val = "Z"
+            if "inactive-outputs" in self.config:
+                val = self.config["inactive-outputs"].get(gpio, self.config["inactive-outputs"].get("others","Z"))
+            self.hal.setOutput(gpio, val)
+        # enable the gpios for the program
+        for (gpio, val) in self.config["programs"][program].items():
+            self.hal.setOutput(gpio, val)
 
 
-async def presence_loop(doorman: DoorManager, hal: DoorHal):
-    gpioPresence = config["presence-gpio"]
-    gpioPresenceInv = config["presence-gpio-inverted"]
-    while asyncio.get_running_loop().is_running():
+    async def cycle_loop(self):
+        self.output_program(self.program)
+        f = self.config["cycle-forward-input"]
+        b = self.config["cycle-backward-input"]
+        inputs = {f: '?', b: '?'}
+        while asyncio.get_running_loop().is_running():
+            event = self.hal.getEvent()
+            if event is None:
+                await asyncio.sleep(0.5)
+                continue
+            prev_inputs = inputs
+            inputs = loads(event)
+
+            if inputs[f] == "H" and not prev_inputs[f] == "H":
+                self.cycle_program(1)
+            if inputs[b] == "H" and not prev_inputs[b] == "H":
+                self.cycle_program(-1)
+
+    async def switch_loop(self):
+        while asyncio.get_running_loop().is_running():
+            val = self.hal.getInput(config['switch-input'])
+            program = self.config['switch-programs'][val]
+            self.set_program(program)
+            await asyncio.sleep(1)
+
+
+    async def presence_loop(self):
+        gpioPresence = self.config["presence-gpio"]
+        gpioPresenceInv = self.config["presence-gpio-inverted"]
+        while asyncio.get_running_loop().is_running():
+            try:
+                presence = self.hal.getInput(gpioPresence)
+                if gpioPresenceInv:
+                    presence = not presence
+                self.publish("door/+/presence", self.door_id, qos=2, retain=True, payload=str(presence).lower())
+            except:
+                log.error("Failed to retrieve or publish inputs", exc_info=True)
+            await asyncio.sleep(5)
+
+
+    async def dormakaba_open_loop(self):
+        while asyncio.get_running_loop().is_running():
+            try:
+                isOpen = (not self.hal.getInput("in2")) or self.hal.getInput("in5")
+                self.publish("door/+/is_open", self.door_id, qos=2, retain=True, payload=str(isOpen).lower())
+                log.info("door status is_open=" + str(isOpen))
+
+                for k in dormakabaMapping.keys():
+                    name = dormakabaMapping[k]
+                    if self.hal.exist(k):
+                        val = self.hal.getInput(k)
+                        self.publish("door/+/input_%s" % name, \
+                            self.door_id, qos=2, retain=True, \
+                                payload=str(val).lower())
+            except:
+                log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
+            await asyncio.sleep(5)
+
+    async def usb_push_pinstatus(self):
+        ev = self.hal.getEvent()
+        if ev is not None:
+            log.info("usb_push_instatus: got %s" % ev)
+        await asyncio.sleep(0.2)
+
+    def gong_handler(self, v):
         try:
-            presence = hal.getInput(gpioPresence)
-            if gpioPresenceInv:
-                presence = not presence
-            doorman.publish("door/+/presence", config["door-id"], qos=2, retain=True, payload=str(presence).lower())
+            self.publish("door/+/gong", self.door_id, qos=2, retain=False)
         except:
-            log.error("Failed to retrieve or publish inputs", exc_info=True)
-        await asyncio.sleep(5)
+            log.error("Failed publishing gong", exc_info=True)
 
-dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
-    "in3": "verriegelt", "in4": "druecker", "in5": "steuerfalle", \
-    "in6": "daueroffen"}
 
-async def dormakaba_open_loop(doorman: DoorManager, hal: DoorHal):
-    while asyncio.get_running_loop().is_running():
-        try:
-            isOpen = (not hal.getInput("in2")) or hal.getInput("in5")
-            doorman.publish("door/+/is_open", config["door-id"], qos=2, retain=True, payload=str(isOpen).lower())
-            log.info("door status is_open=" + str(isOpen))
+    def start(self, loop):
+        self.connect()
+        if self.config.get("program-change", None) == "cycle":
+            loop.create_task(self.cycle_loop())
+        if self.config.get("program-change", None) == "switch":
+            loop.create_task(self.switch_loop())
 
-            for k in dormakabaMapping.keys():
-                name = dormakabaMapping[k]
-                if hal.exist(k):
-                    val = hal.getInput(k)
-                    doorman.publish("door/+/input_%s" % name, \
-                        config["door-id"], qos=2, retain=True, \
-                            payload=str(val).lower())
-        except:
-            log.error("Failed to retrieve or publish inputs for dormakaba_open_loop", exc_info=True)
-        await asyncio.sleep(5)
+        if "input-type" in self.config:
+            if self.config["input-type"] == "gildor":
+                self.hal.registerInputCallback("gong", gong_handler, falling=False)
+                loop.create_task(self.presence_loop())
+            elif self.config["input-type"] == "dormakaba":
+                loop.create_task(self.dormakaba_open_loop())
+            elif self.config["input-type"] == "dormakaba_ed_100_250":
+                loop.create_task(self.usb_push_pinstatus())
 
-async def usb_push_pinstatus(doorman: DoorManager, hal: DoorHal):
-    ev = hal.getEvent()
-    if ev is not None:
-        log.info("usb_push_instatus: got %s" % ev)
-    await asyncio.sleep(0.2)
-
-def gong_handler(v):
-    try:
-        dm.publish("door/+/gong", config["door-id"], qos=2, retain=False)
-    except:
-        log.error("Failed publishing gong", exc_info=True)
-
-def sigterm_handler(signum, frame):
-    dm._mqttc.loop_stop()
-    hal.cleanup()
-    sys.exit(0)
-
-def sigusr1_handler(signum, frame):
-    open_door()
-
-if __name__ == '__main__':
+def main():
     args = docopt(__doc__)
-    loop = asyncio.new_event_loop()
+    print(args)
+    config_path = args["-c"]
+    if config_path is None: config_path = "./config.json"
+    with open(config_path) as fd:
+        config = loads(fd.read())
+    if "loglevel" in config:
+        mqtt_log.setLevel(config["loglevel"])
+
+    def sigterm_handler(signum, frame):
+        dm._mqttc.loop_stop()
+        hal.cleanup()
+        sys.exit(0)
+
+    def sigusr1_handler(signum, frame):
+        dm.open_door()
 
     signal(SIGUSR1, sigusr1_handler)
     signal(SIGTERM, sigterm_handler)
 
-    dm = DoorManager(
-        config['mqtt']['client_kwargs'],
-        config['mqtt']['password_auth'],
-        config['mqtt']['server_kwargs'],
-        config['mqtt']['tls']
-    )
-    dm.connect()
 
     if config["gpio-config"] == "usb":
         halcfg = HalConfig()
@@ -224,18 +248,10 @@ if __name__ == '__main__':
         else:
             hal = DoorHal(halcfg)
 
-    if config.get("program-change", None) == "cycle":
-        loop.create_task(cycle_loop(dm, hal))
-    if config.get("program-change", None) == "switch":
-        loop.create_task(switch_loop(dm, hal))
-
-    if "input-type" in config:
-        if config["input-type"] == "gildor":
-            hal.registerInputCallback("gong", gong_handler, falling=False)
-            loop.create_task(presence_loop(dm, hal))
-        elif config["input-type"] == "dormakaba":
-            loop.create_task(dormakaba_open_loop(dm, hal))
-        elif config["input-type"] == "dormakaba_ed_100_250":
-            loop.create_task(usb_push_pinstatus(dm, hal))
-
+    loop = asyncio.new_event_loop()
+    dm = DoorManager(config, hal)
+    dm.start(loop)
     loop.run_forever()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,11 @@
+Source: door-manager
+Section: zam
+Priority: optional
+Maintainer: Jonathan Krebs <jonny@git2025.bruckbu.de>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools, pybuild-plugin-pyproject
+Standards-Version: 4.6.2
+
+Package: door-manager
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends}
+Description: Se-ZAM Door Manager

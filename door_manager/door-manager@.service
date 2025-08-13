@@ -1,0 +1,14 @@
+[Unit]
+Description=Door Manager for %i
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+User=pi
+ExecStart=door-manager -c /etc/door-manager/%i.json
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

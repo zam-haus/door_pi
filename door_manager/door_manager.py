@@ -18,7 +18,7 @@
 ''' door_manager
 
 Usage:
-  door_manager.py
+  door_manager.py [-c FILE]
   door_manager.py [-c FILE] (-s | --simulate)
 
 Options:

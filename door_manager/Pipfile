@@ -4,13 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-decorated-paho-mqtt = "*"
-docopt = "*"
-"rpi.gpio" = "*"
-pyserial = "*"
-rshell = "*"
-
+door-manager = { path=".", editable=true }
 [dev-packages]
+rshell = "*" # for interacting with micropython
 
 [requires]
 python_version = "3"

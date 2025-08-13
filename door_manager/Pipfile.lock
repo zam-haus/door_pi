@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d03462cdc141b8f2ca3371d45d9e240252db4f43b0bb77faea40fa16e9d84641"
+            "sha256": "9c58560b9d70a85d270d5f89cd80ea3726c6be8d19c0d3392969021311353123"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -21,29 +21,41 @@
                 "sha256:d134f7220dd60281f5f514094ea7ef7582591c771a6f64e1c94325742db9942f",
                 "sha256:e5eb6a995f95d4a601163ed6c4dae403be42db3dd31c9f37f908d88b0b2d9347"
             ],
-            "index": "pypi",
+            "markers": "python_version >= '3.7'",
             "version": "==1.0.5"
         },
         "docopt": {
             "hashes": [
                 "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"
             ],
-            "index": "pypi",
             "version": "==0.6.2"
+        },
+        "door-manager": {
+            "editable": true,
+            "path": "."
         },
         "paho-mqtt": {
             "hashes": [
-                "sha256:2a8291c81623aec00372b5a85558a372c747cbca8e9934dfe218638b8eefc26f"
+                "sha256:12d6e7511d4137555a3f6ea167ae846af2c7357b10bc6fa4f7c3968fc1723834",
+                "sha256:6db9ba9b34ed5bc6b6e3812718c7e06e2fd7444540df2455d2c51bd58808feee"
             ],
-            "version": "==1.6.1"
+            "markers": "python_version >= '3.7'",
+            "version": "==2.1.0"
         },
         "pyserial": {
             "hashes": [
                 "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb",
                 "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0"
             ],
-            "index": "pypi",
             "version": "==3.5"
+        },
+        "pyudev": {
+            "hashes": [
+                "sha256:2e945427a21674893bb97632401db62139d91cea1ee96137cc7b07ad22198fc7",
+                "sha256:e8246f0a014fe370119ba2bc781bfbe62c0298d0d6b39c94e83102a8a3f56960"
+            ],
+            "markers": "python_version >= '3.7'",
+            "version": "==0.24.3"
         },
         "rpi.gpio": {
             "hashes": [
@@ -56,9 +68,31 @@
                 "sha256:b86b66dc02faa5461b443a1e1f0c1d209d64ab5229696f32fb3b0215e0600c8c",
                 "sha256:cd61c4b03c37b62bba4a5acfea9862749c33c618e0295e7e90aa4713fb373b70"
             ],
-            "index": "pypi",
             "version": "==0.7.1"
         }
     },
-    "develop": {}
+    "develop": {
+        "pyserial": {
+            "hashes": [
+                "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb",
+                "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0"
+            ],
+            "version": "==3.5"
+        },
+        "pyudev": {
+            "hashes": [
+                "sha256:2e945427a21674893bb97632401db62139d91cea1ee96137cc7b07ad22198fc7",
+                "sha256:e8246f0a014fe370119ba2bc781bfbe62c0298d0d6b39c94e83102a8a3f56960"
+            ],
+            "markers": "python_version >= '3.7'",
+            "version": "==0.24.3"
+        },
+        "rshell": {
+            "hashes": [
+                "sha256:4a66d835207479550e59d0dd3e83003d04c4eca78a4e49250f887ed2dd4b0bf5"
+            ],
+            "index": "pypi",
+            "version": "==0.0.36"
+        }
+    }
 }

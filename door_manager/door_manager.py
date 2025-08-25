@@ -62,7 +62,7 @@ class DoorManager(GenericMqttEndpoint):
             config['mqtt']['tls'])
         self.config = config
         self.hal = hal
-        self.program = "closed"
+        self.program = config.get("startup-program", "closed")
 
 
     @GenericMqttEndpoint.subscribe_decorator(lambda self: f'door/{self.door_id}/+', qos=2)
@@ -127,8 +127,11 @@ class DoorManager(GenericMqttEndpoint):
     async def cycle_loop(self):
         self.output_program(self.program)
         f = self.config["cycle-forward-input"]
-        b = self.config["cycle-backward-input"]
-        inputs = {f: '?', b: '?'}
+        b = self.config.get("cycle-backward-input")
+        can_cycle_backwards = b is not None
+        fl = self.config.get("cycle-forward-input-level", "H")
+        bl = self.config.get("cycle-backward-input-level", "H")
+        inputs = {}
         while asyncio.get_running_loop().is_running():
             event = self.hal.getEvent()
             if event is None:
@@ -137,9 +140,9 @@ class DoorManager(GenericMqttEndpoint):
             prev_inputs = inputs
             inputs = loads(event)
 
-            if inputs[f] == "H" and not prev_inputs[f] == "H":
+            if inputs[f] == fl and not prev_inputs.get(f) == fl:
                 self.cycle_program(1)
-            if inputs[b] == "H" and not prev_inputs[b] == "H":
+            if can_cycle_backwards and inputs[b] == bl and not prev_inputs.get(b) == bl:
                 self.cycle_program(-1)
 
     async def switch_loop(self):

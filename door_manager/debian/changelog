@@ -1,4 +1,11 @@
 door-manager (1.0.0) unstable; urgency=medium
 
+  * Add config option for active cycle input voltage level, make cycling
+    backwards optional, make the door program on startup configurable.
+
+ -- Jonathan Krebs <jonny@git2025.bruckbu.de>  Mon, 25 Aug 2025 12:00:00 +0000
+
+door-manager (1.0.0) unstable; urgency=medium
+
   * Initial packaging
- -- Jonathan Krebs <jonny@git2025.bruckbu.de>  Thu, 11 Aug 2025 12:00:00 +0000
+ -- Jonathan Krebs <jonny@git2025.bruckbu.de>  Mon, 11 Aug 2025 12:00:00 +0000

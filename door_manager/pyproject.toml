@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "door-manager"
-version = "0.1.0"
+version = "1.1.0"
 license = {text = "GPL-3.0"}
 requires-python = ">=3.7"
 

@@ -6,3 +6,11 @@ door_manager/config-*
 ~*
 *.pyc
 datasheets
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/.gitignore
+/.idea/copilot.data.migration.ask2agent.xml
+/.idea/door_pi.iml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml

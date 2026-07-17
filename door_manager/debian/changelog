@@ -1,4 +1,4 @@
-door-manager (1.0.0) unstable; urgency=medium
+door-manager (1.1.0) unstable; urgency=medium
 
   * Add config option for active cycle input voltage level, make cycling
     backwards optional, make the door program on startup configurable.

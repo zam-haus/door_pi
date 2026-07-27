@@ -10,7 +10,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with door_manager.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -20,6 +20,8 @@ from time import sleep
 from json import load, loads, JSONDecodeError
 from queue import Queue
 from threading import Lock
+import abc
+
 
 class HalConfig:
     def __init__(self, fname=None):
@@ -32,14 +34,39 @@ class HalConfig:
             self.inputs = cfgGpio["inputs"]
             self.outputs = cfgGpio["outputs"]
 
-class DoorHal:
+
+class GPIOHAL(abc.ABC):
+    def __init__(self, _cfg):
+        pass
+
+    @abc.abstractmethod
+    def impulse(self, name, val, duration=2.0):
+        pass
+
+    @abc.abstractmethod
+    def setOutput(self, name, val):
+        pass
+
+    @abc.abstractmethod
+    def getInput(self, name):
+        pass
+
+    @abc.abstractmethod
+    def getEvent(self):
+        pass
+
+    def cleanup(self):
+        pass
+
+
+class DoorHalRaspi(GPIOHAL):
     def __init__(self, cfg):
         import RPi.GPIO as gpio
         self.cfg = cfg
         self.gpio = gpio
         self.gpio.setmode(gpio.BCM)
         self.gpio.setwarnings(False)
-        
+
         for i in self.cfg.inputs:
             self.gpio.setup(self.cfg.inputs[i], self.gpio.IN)
         for o in self.cfg.outputs:
@@ -50,25 +77,27 @@ class DoorHal:
         return name in self.cfg.inputs
 
     def impulse(self, name, val, duration=2.0):
-        reset=self.outputStates.get(name, "Z")
-        setOutput(name, val)
+        reset = self.outputStates.get(name, "Z")
+        self.setOutput(name, val)
         sleep(duration)
-        setOutput(name, reset)
-    
+        self.setOutput(name, reset)
+
     def setOutput(self, name, val):
+        # TODO: ValueError instead of assert
         assert val in "HL"
         assert (name in self.cfg.outputs)
         print('output', val, 'on', name)
-        self.gpio.output(self.cfg.outputs[name], {"H":True, "L":False}[val])
+        self.gpio.output(self.cfg.outputs[name], {"H": True, "L": False}[val])
         self.outputStates[name]=val
-        
+
     def getInput(self, name):
         assert name in self.cfg.inputs
         return self.gpio.input(self.cfg.inputs[name]) == self.gpio.HIGH
-        
+
     def registerInputCallback(self, name, callback, falling=True):
         assert name in self.cfg.inputs
-        self.gpio.add_event_detect(self.cfg.inputs[name],
+        self.gpio.add_event_detect(
+            self.cfg.inputs[name],
             self.gpio.FALLING if falling else self.gpio.RISING,
             callback=callback
         )
@@ -76,7 +105,8 @@ class DoorHal:
     def cleanup(self):
         self.gpio.cleanup()
 
-class DoorHalUSB:
+
+class DoorHalUSB(GPIOHAL):
     def __init__(self, cfg):
         import serial
         self.cfg = cfg
@@ -92,7 +122,8 @@ class DoorHalUSB:
         l = self.s.readline().strip().decode()
         while l.startswith("!"):
             self.eventq.put(l)
-            if event_only: return
+            if event_only:
+                return None
             l = self.s.readline().strip().decode()
         return l
 
@@ -106,10 +137,11 @@ class DoorHalUSB:
                 self.__readline(event_only=True)
             if not self.eventq.empty():
                 return self.eventq.get()[1:]
+        return None  # no event pending
 
     def exist(self, name):
         return name in self.cfg.inputs
-    
+
     def impulse(self, name, val, duration=None):
         assert val in "HLZ"
         with self.slock:
@@ -118,12 +150,12 @@ class DoorHalUSB:
                 cmd += " {}".format(duration)
             self.s.write((cmd + "\r").encode())
             self.__checkok()
-        
+
     def getInput(self, name):
         iv = self.getInputAll()
         assert name in iv
         return iv[name]
-    
+
     def getInputAll(self):
         with self.slock:
             self.s.write("*read\r".encode())
@@ -143,19 +175,14 @@ class DoorHalUSB:
         with self.slock:
             self.s.write(("*set " + name + " " + val + "\r").encode())
             self.__checkok()
-        
-    def registerInputCallback(self, name, callback, falling=True):
-        pass
 
-    def cleanup(self):
-        pass
-   
-class DoorHalSim:
+
+class DoorHalSim(GPIOHAL):
     def __init__(self, cfg):
         self.cfg = cfg
 
         import readline
-        from threading import Thread        
+        from threading import Thread
         self.worker = Thread(target=self.__inputLoop)
         self.worker.start()
         self.outputStates = {}
@@ -166,7 +193,7 @@ class DoorHalSim:
             self.inputStates[i] = 1
             self.inputCallbacksFalling[i] = []
             self.inputCallbacksRising[i] = []
-        
+
     def __inputLoop(self):
         try:
             while True:
@@ -186,13 +213,13 @@ class DoorHalSim:
 
     def exist(self, name):
         return name in self.cfg.inputs
-      
+
     def impulse(self, name, val, duration=2.0):
-        reset=self.outputStates.get(name, "Z")
-        setOutput(name, val)
+        reset = self.outputStates.get(name, "Z")
+        self.setOutput(name, val)
         sleep(duration)
-        setOutput(name, reset)
-      
+        self.setOutput(name, reset)
+
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in "HLZ")
         self.outputStates[name]=val
@@ -212,9 +239,10 @@ class DoorHalSim:
     def cleanup(self):
         pass
 
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
-    
+
     p = ArgumentParser(description='Test DoorHal')
     p.add_argument('confFile', help='gpio configuration file')
     p.add_argument('name', help='name of gpio')
@@ -229,8 +257,8 @@ if __name__ == '__main__':
     if args.sim:
         hal = DoorHalSim(cfg)
     else:
-        hal = DoorHal(cfg)
-    
+        hal = DoorHalRaspi(cfg)
+
     if args.input:
         print('input', args.name, 'is', hal.getInput(args.name))
         #hal.registerInputCallback(args.name, 
@@ -243,5 +271,3 @@ if __name__ == '__main__':
         if args.time > 0:
             sleep(args.time/1000)
             hal.setOutput(args.name, False)
-    
-    

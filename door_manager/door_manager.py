@@ -37,7 +37,7 @@ from signal import signal, pause, SIGUSR1, SIGTERM
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
 
-from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
+from door_hal import DoorHalRaspi, DoorHalUSB, DoorHalSim, HalConfig, GPIOHAL
 
 
 FORMAT = '%(asctime)s %(processName)s#%(process)d @ %(module)s:%(name)s:%(funcName)s: %(message)s (%(filename)s:%(lineno)s)'
@@ -52,7 +52,7 @@ dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
     "in6": "daueroffen"}
 
 class DoorManager(GenericMqttEndpoint):
-    def __init__(self, config, hal: DoorHal):
+    def __init__(self, config, hal: GPIOHAL):
         # super().__init__ accesses self.door_id to build the endpoint.
         self.door_id=config['door-id']
         super().__init__(
@@ -61,7 +61,7 @@ class DoorManager(GenericMqttEndpoint):
             config['mqtt']['server_kwargs'],
             config['mqtt']['tls'])
         self.config = config
-        self.hal = hal
+        self.hal: GPIOHAL = hal
         self.program = config.get("startup-program", "closed")
 
 
@@ -147,7 +147,7 @@ class DoorManager(GenericMqttEndpoint):
 
     async def switch_loop(self):
         while asyncio.get_running_loop().is_running():
-            val = self.hal.getInput(config['switch-input'])
+            val = self.hal.getInput(self.config['switch-input'])
             program = self.config['switch-programs'][val]
             self.set_program(program)
             await asyncio.sleep(1)
@@ -249,7 +249,7 @@ def main():
         if config["gpio-config"] == "usb":
             hal = DoorHalUSB(halcfg)
         else:
-            hal = DoorHal(halcfg)
+            hal = DoorHalRaspi(halcfg)
 
     loop = asyncio.new_event_loop()
     dm = DoorManager(config, hal)

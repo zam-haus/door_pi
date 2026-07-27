@@ -28,11 +28,11 @@ Options:
 
 import logging
 from json import loads
-from datetime import datetime
+import datetime
 import sys
 import asyncio
-from time import time, sleep
-from signal import signal, pause, SIGUSR1, SIGTERM
+from time import time
+from signal import signal, SIGUSR1, SIGTERM
 
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
@@ -83,18 +83,21 @@ class DoorManager(GenericMqttEndpoint):
             if now < float(not_after):
                 self.open_door()
             else:
-                time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
+                time_obj = datetime.datetime.fromtimestamp(not_after, datetime.timezone.utc)
+                time_str = time_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
         except:
             log.error("Failed to parse request", exc_info=True)
 
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
+
     def set_program(self, program):
         if program not in self.config["programs"]:
             log.error("Requested unknown door program: " + program)
         self.output_program(program)
         self.program = program
+
     def cycle_program(self, direction=1):
         """cycle forward (direction=1) or backward through the states (direction=-1)"""
         # when in a not-cycleable state, initialize to first
@@ -123,7 +126,6 @@ class DoorManager(GenericMqttEndpoint):
         for (gpio, val) in self.config["programs"][program].items():
             self.hal.setOutput(gpio, val)
 
-
     async def cycle_loop(self):
         self.output_program(self.program)
         f = self.config["cycle-forward-input"]
@@ -151,7 +153,6 @@ class DoorManager(GenericMqttEndpoint):
             program = self.config['switch-programs'][val]
             self.set_program(program)
             await asyncio.sleep(1)
-
 
     async def presence_loop(self):
         gpioPresence = self.config["presence-gpio"]

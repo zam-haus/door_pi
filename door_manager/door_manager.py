@@ -208,7 +208,7 @@ class DoorManager(GenericMqttEndpoint):
 
         if "input-type" in self.config:
             if self.config["input-type"] == "gildor":
-                self.hal.registerInputCallback("gong", gong_handler, falling=False)
+                self.hal.registerInputCallback("gong", self.gong_handler, falling=False)
                 loop.create_task(self.presence_loop())
             elif self.config["input-type"] == "dormakaba":
                 loop.create_task(self.dormakaba_open_loop())

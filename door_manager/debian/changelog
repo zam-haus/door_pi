@@ -1,3 +1,9 @@
+door-manager (1.2.0) unstable; urgency=medium
+
+  * Make Raspberrypi GPIOs usable again.
+
+ -- Jonathan Krebs <jonny@git2026.bruckbu.de> Mon, 10 Aug 2026 19:15:00 +0200
+
 door-manager (1.1.0) unstable; urgency=medium
 
   * Add config option for active cycle input voltage level, make cycling

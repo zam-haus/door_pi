@@ -107,7 +107,7 @@ class DoorHalRaspi(GPIOHAL):
         return name in self.cfg.inputs
 
     def impulse(self, name, val, duration=2.0):
-        reset = self.outputStates.get(name, "Z")
+        reset = self.outputStates.get(name, "L")
         self.setOutput(name, val)
         sleep(duration)
         self.setOutput(name, reset)

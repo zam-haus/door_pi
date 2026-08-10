@@ -18,9 +18,10 @@ from os import kill, getpid
 from signal import SIGTERM
 from time import sleep
 from json import load, loads, JSONDecodeError
-from queue import Queue
+import queue
 from threading import Lock
 import abc
+import functools
 
 
 class HalConfig:
@@ -66,12 +67,41 @@ class DoorHalRaspi(GPIOHAL):
         self.gpio = gpio
         self.gpio.setmode(gpio.BCM)
         self.gpio.setwarnings(False)
+        self.eventq = queue.Queue()
+        self.callbacks = {}
 
         for i in self.cfg.inputs:
             self.gpio.setup(self.cfg.inputs[i], self.gpio.IN)
         for o in self.cfg.outputs:
             self.gpio.setup(self.cfg.outputs[o], self.gpio.OUT, initial=0)
         self.outputStates = {}
+        for input in self.cfg.inputs:
+            self.gpio.add_event_detect(
+                self.cfg.inputs[input],
+                self.gpio.BOTH,
+                callback=functools.partial(self._event_callback, input),
+                bouncetime=50)
+
+    def _event_callback(self, input, *_args):
+        pinval = self.gpio.input(self.cfg.inputs[input])
+        if pinval:
+            x = "H"
+        else:
+            x = "L"
+        self.eventq.put({input: x})
+        for cb in self.callbacks.get((input, x), ()):
+            cb()
+
+    def registerInputCallback(self, input, callback, falling=True):
+        if falling is True:
+            x = "L"
+        elif falling is False:
+            x = "H"
+        else:
+            raise TypeError("parameter falling should be True or False")
+        if (input, x) not in self.callbacks:
+            self.callbacks[(input, x)] = []
+        self.callbacks[(input, x)].append(callback)
 
     def exist(self, name):
         return name in self.cfg.inputs
@@ -84,7 +114,8 @@ class DoorHalRaspi(GPIOHAL):
 
     def setOutput(self, name, val):
         # TODO: ValueError instead of assert
-        assert val in "HL"
+        if val not in "HL":
+            raise ValueError("GPIO value must be H or L. Unsupported value: %r" % val)
         assert (name in self.cfg.outputs)
         print('output', val, 'on', name)
         self.gpio.output(self.cfg.outputs[name], {"H": True, "L": False}[val])
@@ -94,13 +125,11 @@ class DoorHalRaspi(GPIOHAL):
         assert name in self.cfg.inputs
         return self.gpio.input(self.cfg.inputs[name]) == self.gpio.HIGH
 
-    def registerInputCallback(self, name, callback, falling=True):
-        assert name in self.cfg.inputs
-        self.gpio.add_event_detect(
-            self.cfg.inputs[name],
-            self.gpio.FALLING if falling else self.gpio.RISING,
-            callback=callback
-        )
+    def getEvent(self):
+        try:
+            return self.eventq.get(block=False)
+        except queue.Empty:
+            return None
 
     def cleanup(self):
         self.gpio.cleanup()
@@ -112,7 +141,7 @@ class DoorHalUSB(GPIOHAL):
         self.cfg = cfg
         self.s = serial.Serial(cfg.usbpath, timeout=10)
         self.slock = Lock()
-        self.eventq = Queue()
+        self.eventq = queue.Queue()
 
         iv = self.getInputAll()
         for i in iv:

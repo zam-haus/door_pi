@@ -102,57 +102,58 @@ class Logic():
             line = line.strip()
             elem = line.split()
 
-            if len(elem) < 1:
-                return
+            if len(elem) >= 1:
+                cmd = elem[0]
 
-            cmd = elem[0]
+                if cmd == "*id":
+                    self.cmd_id()
 
-            if cmd == "*id":
-                self.cmd_id()
+                elif cmd == "*idn":
+                    self.cmd_idn()
 
-            elif cmd == "*idn":
-                self.cmd_idn()
+                elif cmd == "*read":
+                    self.cmd_read()
 
-            elif cmd == "*read":
-                self.cmd_read()
-
-            elif (cmd == "*impulse") and (len(elem) >= 3):
-                name = elem[1]
-                state = elem[2]
-                if len(elem) >= 4:
-                    try:
-                        duration = int(elem[3])
-                    except ValueError:
-                        self.io.write("? invalid duration")
+                elif (cmd == "*impulse") and (len(elem) >= 3):
+                    name = elem[1]
+                    state = elem[2]
+                    if len(elem) >= 4:
+                        try:
+                            duration = int(elem[3])
+                        except ValueError:
+                            self.io.write("? invalid duration")
+                        else:
+                            self.cmd_impulse(duration, name, state)
                     else:
+                        duration = None
                         self.cmd_impulse(duration, name, state)
+
+                elif (cmd == "*set") and (len(elem) == 3):
+                    name = elem[1]
+                    state = elem[2]
+                    self.cmd_set(name, state)
+
+                elif cmd == "*version":
+                    self.cmd_version()
+
                 else:
-                    duration = None
-                    self.cmd_impulse(duration, name, state)
+                    self.io.write("?")
 
-            elif (cmd == "*set") and (len(elem) == 3):
-                name = elem[1]
-                state = elem[2]
-                self.cmd_set(name, state)
+                self.ledv = 1 - self.ledv
 
-            elif cmd == "*version":
-                self.cmd_version()
+        # auto-off must be checked every loop tick, not only when a line was
+        # just processed above -- otherwise an impulse never resets unless
+        # another command happens to arrive after its duration elapses.
+        expired = [
+            o
+            for (o, target_time)
+            in self.auto_off.items()
+            if time() > target_time
+        ]
 
-            else:
-                self.io.write("?")
-
-            self.ledv = 1 - self.ledv
-
-            expired = [
-                o
-                for (o, target_time)
-                in self.auto_off.items()
-                if time() > target_time
-            ]
-
-            for o in expired:
-                self.auto_off.pop(o, None)
-                self.set_output(o, self.set_output_states[o])
+        for o in expired:
+            self.auto_off.pop(o, None)
+            self.set_output(o, self.set_output_states[o])
 
     def generate_interrupts(self):
         # if an input changed, print an interrupt message

@@ -1,0 +1,6 @@
+services:
+  mosquitto:
+    build: ./mosquitto
+    ports:
+      # matches door_manager/config.json.example-usb (host 127.0.0.1, port 8001)
+      - "127.0.0.1:8001:1883"

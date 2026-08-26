@@ -1,0 +1,13 @@
+[project]
+name = "uc-firmware"
+version = "0.1.0"
+description = "Microcontroller firmware for the door_pi USB HAL, importable flat (mirrors the MicroPython filesystem layout)"
+requires-python = ">=3.7"
+dependencies = []
+
+[tool.setuptools]
+py-modules = ["machine", "logic", "main"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"

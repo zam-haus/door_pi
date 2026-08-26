@@ -1,4 +1,6 @@
-
+import json
+import os
+from io import StringIO
 # This file is part of door_manager.
 #
 # door_manager is free software: you can redistribute it and/or modify
@@ -15,13 +17,16 @@
 # along with door_manager.  If not, see <http://www.gnu.org/licenses/>.
 
 from os import kill, getpid
+from pathlib import Path
 from signal import SIGTERM
 from time import sleep
 from json import load, loads, JSONDecodeError
 import queue
-from threading import Lock
+from threading import Lock, Thread
 import abc
 import functools
+from typing import override, Literal
+from select import select
 
 
 class HalConfig:
@@ -119,7 +124,7 @@ class DoorHalRaspi(GPIOHAL):
         assert (name in self.cfg.outputs)
         print('output', val, 'on', name)
         self.gpio.output(self.cfg.outputs[name], {"H": True, "L": False}[val])
-        self.outputStates[name]=val
+        self.outputStates[name] = val
 
     def getInput(self, name):
         assert name in self.cfg.inputs
@@ -137,15 +142,18 @@ class DoorHalRaspi(GPIOHAL):
 
 class DoorHalUSB(GPIOHAL):
     def __init__(self, cfg):
-        import serial
         self.cfg = cfg
-        self.s = serial.Serial(cfg.usbpath, timeout=10)
+        self.s = self._get_serial()
         self.slock = Lock()
         self.eventq = queue.Queue()
 
         iv = self.getInputAll()
         for i in iv:
             self.cfg.inputs[i] = i
+
+    def _get_serial(self):
+        import serial
+        return serial.Serial(self.cfg.usbpath, timeout=10)
 
     def __readline(self, event_only=False):
         l = self.s.readline().strip().decode()
@@ -251,7 +259,7 @@ class DoorHalSim(GPIOHAL):
 
     def setOutput(self, name, val):
         assert (name in self.cfg.outputs) and (val in "HLZ")
-        self.outputStates[name]=val
+        self.outputStates[name] = val
         print("output", name, "=", val)
 
     def getInput(self, name):
@@ -267,6 +275,81 @@ class DoorHalSim(GPIOHAL):
 
     def cleanup(self):
         pass
+
+
+class DoorHalUsbSimulatedUc(DoorHalUSB):
+    class FakeSerialIo:
+        def __init__(self):
+            class FakeIo():
+                def __init__(self, parent):
+                    self.parent : DoorHalUsbSimulatedUc.FakeSerialIo = parent
+
+                def read(self) -> str:
+                    fd = self.parent.to_uc[0]
+                    r, _, _ = select([fd], [], [], 0)
+                    line = ""
+                    while r:
+                        line += os.read(fd, 1).decode()
+                        if line[-1] in ("\r", "\n"):
+                            break
+                    return line
+
+                def write(self, *value: str):
+                    line = " ".join(str(v) for v in value) + "\n"
+                    os.write(self.parent.from_uc[1], line.encode())
+
+            class FakeSerial():
+                def __init__(self, parent):
+                    self.parent : DoorHalUsbSimulatedUc.FakeSerialIo = parent
+
+                def readline(self) -> bytes:
+                    fd = self.parent.from_uc[0]
+                    line = b""
+                    while True:
+                        c = os.read(fd, 1)
+                        if not c:
+                            break
+                        line += c
+                        if c in (b"\r", b"\n"):
+                            break
+                    return line
+
+                def write(self, *value: bytes):
+                    for v in value:
+                        if isinstance(v, str):
+                            v = v.encode()
+                        os.write(self.parent.to_uc[1], v)
+
+                @property
+                def in_waiting(self) -> int:
+                    r, _, _ = select([self.parent.from_uc[0]], [], [], 0)
+                    return 1 if r else 0
+
+            self.io = FakeIo(self)
+            self.serial = FakeSerial(self)
+            # pipefd[0] refers to the read end of the pipe.  pipefd[1] refers to the write end of the pipe.
+            self.to_uc = os.pipe()
+            self.from_uc = os.pipe()
+
+    def __init__(self):
+        self.uc = Path(__file__).parent / ".." / "uc"
+        from logic import Logic
+        self.fake = DoorHalUsbSimulatedUc.FakeSerialIo()
+        self.logic = Logic(self.fake.io)
+        self.cancel = False
+        self.thread = Thread(target=self.run_logic, daemon=True)
+        self.thread.start()
+        super().__init__(HalConfig())
+
+    @override
+    def _get_serial(self):
+        return self.fake.serial
+
+    def run_logic(self):
+        self.logic.cfg = json.loads((self.uc / "config.json").read_text(encoding="ascii"))
+        self.logic.run_initialize()
+        while not self.cancel:
+            self.logic.loop()
 
 
 if __name__ == '__main__':
@@ -290,13 +373,13 @@ if __name__ == '__main__':
 
     if args.input:
         print('input', args.name, 'is', hal.getInput(args.name))
-        #hal.registerInputCallback(args.name, 
+        # hal.registerInputCallback(args.name,
         #    lambda v: print("input", args.name, "falling"), falling=True)
-        #hal.registerInputCallback(args.name, 
+        # hal.registerInputCallback(args.name,
         #    lambda v: print("input", args.name, "rising"), falling=False)
     elif args.output is not None:
         val = args.output == 1
         hal.setOutput(args.name, val)
         if args.time > 0:
-            sleep(args.time/1000)
+            sleep(args.time / 1000)
             hal.setOutput(args.name, False)

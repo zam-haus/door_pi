@@ -84,8 +84,8 @@ them inside the broker container via `podman compose exec` (from the
 Watch everything the door publishes and any commands sent to it:
 
 ```sh
-podman compose exec mosquitto mosquitto_sub -h localhost -p 1883 \
-  -u test -P test -t 'door/#' -v
+(cd testing; podman compose exec mosquitto mosquitto_sub -h localhost -p 1883 \
+  -u test -P test -t 'door/#' -v)
 ```
 
 Send an open command (door-id `1234`, matching

@@ -23,5 +23,17 @@
     "day-gpio": "out2",
     "night-gpio": "out1",
     "permaopen-input": "in3",
-    "loglevel": "ERROR"
+    "loglevel": "ERROR",
+    "inactive-outputs": {"others": "Z"},
+    "programs": {
+        "closed": {"out1": "H"},
+        "manual": {"out2": "H"},
+        "exitonly": {"out4": "H"},
+        "bothways": {"out5": "H"},
+        "permaopen": {"out6": "H"}
+    },
+    "program-change": "cycle",
+    "cycle-programs": ["closed", "manual", "exitonly", "bothways", "permaopen"],
+    "cycle-forward-input": "in1",
+    "cycle-backward-input": "in2"
 }

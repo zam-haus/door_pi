@@ -49,6 +49,23 @@ the whole stack without any hardware attached.
 
    Pass `-c FILE` to point it at a different `door_manager` config.
 
+   By default this also drives random simulated events, so you don't have
+   to trigger everything by hand: the mode-switch buttons (`in1`/`in2`,
+   `cycle-forward-input`/`cycle-backward-input` in the config) get pressed
+   at random, and a simulated door-position sensor reacts to open impulses
+   on `out3` -- except sometimes (by default 20% of the time) it doesn't,
+   to exercise a flaky-sensor path. Every simulated event is logged with a
+   `SIM:` prefix. Tune or disable this with:
+
+   ```
+   --no-random-events               turn it off entirely
+   --button-min=SECONDS              min delay between button presses [default: 1.5]
+   --button-max=SECONDS              max delay between button presses [default: 4.0]
+   --pulse-hold=SECONDS               how long a button press is held [default: 0.3]
+   --malfunction-rate=RATE            chance (0-1) the door sensor misses an open [default: 0.2]
+   --sensor-check-interval=SECONDS   how often the sensor polls for an open impulse [default: 0.05]
+   ```
+
 4. When done, stop the broker:
 
    ```sh

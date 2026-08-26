@@ -14,3 +14,4 @@ datasheets
 /.idea/misc.xml
 /.idea/modules.xml
 /.idea/vcs.xml
+*.egg-info

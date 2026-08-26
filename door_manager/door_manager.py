@@ -28,16 +28,16 @@ Options:
 
 import logging
 from json import loads
-from datetime import datetime
+import datetime
 import sys
 import asyncio
-from time import time, sleep
-from signal import signal, pause, SIGUSR1, SIGTERM
+from time import time
+from signal import signal, SIGUSR1, SIGTERM
 
 from docopt import docopt
 from decorated_paho_mqtt import GenericMqttEndpoint
 
-from door_hal import DoorHal, DoorHalUSB, DoorHalSim, HalConfig
+from door_hal import DoorHalRaspi, DoorHalUSB, DoorHalSim, HalConfig, GPIOHAL
 
 
 FORMAT = '%(asctime)s %(processName)s#%(process)d @ %(module)s:%(name)s:%(funcName)s: %(message)s (%(filename)s:%(lineno)s)'
@@ -52,7 +52,7 @@ dormakabaMapping = {"in1": "sabotage", "in2": "entriegelt", \
     "in6": "daueroffen"}
 
 class DoorManager(GenericMqttEndpoint):
-    def __init__(self, config, hal: DoorHal):
+    def __init__(self, config, hal: GPIOHAL):
         # super().__init__ accesses self.door_id to build the endpoint.
         self.door_id=config['door-id']
         super().__init__(
@@ -61,7 +61,7 @@ class DoorManager(GenericMqttEndpoint):
             config['mqtt']['server_kwargs'],
             config['mqtt']['tls'])
         self.config = config
-        self.hal = hal
+        self.hal: GPIOHAL = hal
         self.program = config.get("startup-program", "closed")
 
 
@@ -83,18 +83,21 @@ class DoorManager(GenericMqttEndpoint):
             if now < float(not_after):
                 self.open_door()
             else:
-                time_str = datetime.utcfromtimestamp(not_after).strftime('%Y-%m-%dT%H:%M:%SZ')
+                time_obj = datetime.datetime.fromtimestamp(not_after, datetime.timezone.utc)
+                time_str = time_obj.strftime('%Y-%m-%dT%H:%M:%SZ')
                 log.warning(f"Ignored delayed request, is only valid until {time_str}")
         except:
             log.error("Failed to parse request", exc_info=True)
 
     def _on_log(self, client, userdata, level, buf):
         mqtt_log.log(level, buf, extra=dict(client=client, userdata=userdata))
+
     def set_program(self, program):
         if program not in self.config["programs"]:
             log.error("Requested unknown door program: " + program)
         self.output_program(program)
         self.program = program
+
     def cycle_program(self, direction=1):
         """cycle forward (direction=1) or backward through the states (direction=-1)"""
         # when in a not-cycleable state, initialize to first
@@ -123,7 +126,6 @@ class DoorManager(GenericMqttEndpoint):
         for (gpio, val) in self.config["programs"][program].items():
             self.hal.setOutput(gpio, val)
 
-
     async def cycle_loop(self):
         self.output_program(self.program)
         f = self.config["cycle-forward-input"]
@@ -147,11 +149,10 @@ class DoorManager(GenericMqttEndpoint):
 
     async def switch_loop(self):
         while asyncio.get_running_loop().is_running():
-            val = self.hal.getInput(config['switch-input'])
+            val = self.hal.getInput(self.config['switch-input'])
             program = self.config['switch-programs'][val]
             self.set_program(program)
             await asyncio.sleep(1)
-
 
     async def presence_loop(self):
         gpioPresence = self.config["presence-gpio"]
@@ -207,7 +208,7 @@ class DoorManager(GenericMqttEndpoint):
 
         if "input-type" in self.config:
             if self.config["input-type"] == "gildor":
-                self.hal.registerInputCallback("gong", gong_handler, falling=False)
+                self.hal.registerInputCallback("gong", self.gong_handler, falling=False)
                 loop.create_task(self.presence_loop())
             elif self.config["input-type"] == "dormakaba":
                 loop.create_task(self.dormakaba_open_loop())
@@ -249,7 +250,7 @@ def main():
         if config["gpio-config"] == "usb":
             hal = DoorHalUSB(halcfg)
         else:
-            hal = DoorHal(halcfg)
+            hal = DoorHalRaspi(halcfg)
 
     loop = asyncio.new_event_loop()
     dm = DoorManager(config, hal)

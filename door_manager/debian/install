@@ -1,1 +1,2 @@
 door-manager@.service usr/lib/systemd/system/
+sysusers.d-door-manager.conf /usr/lib/sysusers.d/door-manager.conf
